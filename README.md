@@ -14,6 +14,10 @@ With this image, you can try **kernel-based virtual machine** in the image.
 
 Run the ```make run``` to boot up the qemu.
 
+## debug the yakvm
+
+Run the ```make debug``` to debug the **YAKVM** on the yakvm environment
+
 # Reference
 
 - [pandengyang/peach](https://github.com/pandengyang/peach)

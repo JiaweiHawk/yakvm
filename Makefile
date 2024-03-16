@@ -2,6 +2,7 @@ PWD                                     := $(shell pwd)
 NPROC                                   := $(shell nproc)
 MEM                                     := 4G
 SMP                                     := 2
+PORT                                    := 1234
 
 QEMU                                    := qemu-system-x86_64
 QEMU_OPTIONS                            := -smp ${SMP}
@@ -15,7 +16,7 @@ QEMU_OPTIONS                            := ${QEMU_OPTIONS} -enable-kvm
 QEMU_OPTIONS                            := ${QEMU_OPTIONS} -nographic
 QEMU_OPTIONS                            := ${QEMU_OPTIONS} -no-reboot
 
-.PHONY: env kernel rootfs run
+.PHONY: debug env kernel rootfs run
 
 kernel:
 	if [ ! -d ${PWD}/kernel ]; then \
@@ -71,3 +72,10 @@ run:
 	${QEMU} \
 		${QEMU_OPTIONS} \
 		-no-shutdown
+
+debug:
+	gnome-terminal -- gdb ${PWD}/kernel/vmlinux --init-eval-command="set confirm on" --init-eval-command="add-auto-load-safe-path ${PWD}/kernel/scripts/gdb/vmlinux-gdb.py" --eval-command="target remote localhost:${PORT}"
+	${QEMU} \
+		${QEMU_OPTIONS} \
+		-no-shutdown \
+		-S -gdb tcp::${PORT}
