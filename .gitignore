@@ -4,4 +4,5 @@
 # pattern for files in root directory
 .gitignore
 !LICENSE
+!Makefile
 !README.md

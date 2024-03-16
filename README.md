@@ -2,6 +2,18 @@
 
 This is a simple **kernel-based virtual machine** for linux to understand **AMD-V(AMD Virtualization)** technology.
 
+# Usage
+
+## build the environment
+
+Run the ```make env``` to generate the **YAKVM** environment image.
+
+With this image, you can try **kernel-based virtual machine** in the image.
+
+## boot the qemu
+
+Run the ```make run``` to boot up the qemu.
+
 # Reference
 
 - [pandengyang/peach](https://github.com/pandengyang/peach)
