@@ -16,7 +16,7 @@ QEMU_OPTIONS                            := ${QEMU_OPTIONS} -enable-kvm
 QEMU_OPTIONS                            := ${QEMU_OPTIONS} -nographic
 QEMU_OPTIONS                            := ${QEMU_OPTIONS} -no-reboot
 
-.PHONY: debug env kernel rootfs run
+.PHONY: debug env kernel rootfs run test
 
 kernel:
 	if [ ! -d ${PWD}/kernel ]; then \
@@ -79,3 +79,10 @@ debug:
 		${QEMU_OPTIONS} \
 		-no-shutdown \
 		-S -gdb tcp::${PORT}
+
+test:
+	if [ "$(shell lscpu | grep 'AMD-V' | wc -l)" = "1" ]; then \
+		${PWD}/test.py --command='''${QEMU} ${QEMU_OPTIONS}''' --history=${PWD}/shares/setup.sh; \
+	else \
+		echo '\033[0;31m[*]\033[0mAMD-V is not supported on this platform'; \
+	fi

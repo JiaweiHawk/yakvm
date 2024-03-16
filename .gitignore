@@ -2,7 +2,15 @@
 *
 
 # pattern for files in root directory
-.gitignore
+!.gitignore
 !LICENSE
 !Makefile
 !README.md
+!test.py
+
+# pattern for files in .github directory
+!.github
+.github/*
+!.github/workflows
+.github/workflows/*
+!.github/workflows/main.yml

@@ -18,6 +18,10 @@ Run the ```make run``` to boot up the qemu.
 
 Run the ```make debug``` to debug the **YAKVM** on the yakvm environment
 
+## test the yakvm
+
+Run the ```make test``` to run the tests on the yakvm environment
+
 # Reference
 
 - [pandengyang/peach](https://github.com/pandengyang/peach)
