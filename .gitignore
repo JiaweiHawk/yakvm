@@ -1,0 +1,7 @@
+# exclude everything except the specific pattern
+*
+
+# pattern for files in root directory
+.gitignore
+!LICENSE
+!README.md
