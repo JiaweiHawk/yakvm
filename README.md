@@ -1,5 +1,7 @@
 # Yet Another Kernel-based Virtual Machine
 
+[![github CI](https://github.com/JiaweiHawk/yakvm/actions/workflows/main.yml/badge.svg)](https://github.com/JiaweiHawk/yakvm/actions/)
+
 This is a simple **kernel-based virtual machine** for linux to understand **AMD-V(AMD Virtualization)** technology.
 
 # Usage
