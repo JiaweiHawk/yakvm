@@ -15,6 +15,11 @@
 .github/workflows/*
 !.github/workflows/main.yml
 
+# pattern for files in include directory
+!include
+include/*
+!include/yakvm.h
+
 # pattern for files in driver directory
 !driver
 driver/*
