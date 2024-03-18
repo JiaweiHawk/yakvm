@@ -21,3 +21,8 @@ driver/*
 !driver/Kbuild
 !driver/main.c
 !driver/Makefile
+
+# pattern for files in tool directory
+!tool
+tool/*
+!tool/emulator.c

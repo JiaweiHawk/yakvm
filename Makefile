@@ -16,7 +16,19 @@ QEMU_OPTIONS                            := ${QEMU_OPTIONS} -enable-kvm
 QEMU_OPTIONS                            := ${QEMU_OPTIONS} -nographic
 QEMU_OPTIONS                            := ${QEMU_OPTIONS} -no-reboot
 
-.PHONY: debug driver env kernel rootfs run test
+.PHONY: debug driver env kernel rootfs run srcs test tool
+
+srcs: driver tool
+	@echo -e '\033[0;32m[*]\033[0mbuild the yakvm sources'
+
+tool:
+	bear --append --output ${PWD}/compile_commands.json -- \
+		gcc \
+			-g -Wall -Werror \
+			-I${PWD}/kernel/build/include \
+			-o ${PWD}/shares/emulator \
+			${PWD}/tool/emulator.c
+	@echo -e '\033[0;32m[*]\033[0mbuild the yakvm tool'
 
 driver:
 	bear --append --output ${PWD}/compile_commands.json -- \
@@ -73,7 +85,7 @@ rootfs:
 	cd ${PWD}/rootfs; sudo find . | sudo cpio -o --format=newc -F ${PWD}/rootfs.cpio >/dev/null
 	@echo -e '\033[0;32m[*]\033[0mbuild the rootfs'
 
-env: kernel rootfs driver
+env: kernel rootfs srcs
 	@echo -e '\033[0;32m[*]\033[0mbuild the yakvm environment'
 
 run:

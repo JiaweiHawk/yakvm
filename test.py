@@ -103,6 +103,9 @@ if __name__ == "__main__":
         qemu.execute("ls /dev/yakvm | wc -l")
         qemu.runtil("1", timeout=args.timeout)
 
+        qemu.execute("/mnt/shares/emulator")
+        qemu.runtil("build a virtual machine based on YAKVM", timeout=args.timeout)
+
         qemu.execute("rmmod yakvm")
         qemu.runtil("cleanup yakvm", timeout=args.timeout)
 
