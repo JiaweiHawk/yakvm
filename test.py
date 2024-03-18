@@ -100,6 +100,9 @@ if __name__ == "__main__":
         qemu.execute("insmod /mnt/shares/yakvm.ko")
         qemu.runtil("initialize yakvm", timeout=args.timeout)
 
+        qemu.execute("ls /dev/yakvm | wc -l")
+        qemu.runtil("1", timeout=args.timeout)
+
         qemu.execute("rmmod yakvm")
         qemu.runtil("cleanup yakvm", timeout=args.timeout)
 
