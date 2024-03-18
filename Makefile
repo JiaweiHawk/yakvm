@@ -16,7 +16,13 @@ QEMU_OPTIONS                            := ${QEMU_OPTIONS} -enable-kvm
 QEMU_OPTIONS                            := ${QEMU_OPTIONS} -nographic
 QEMU_OPTIONS                            := ${QEMU_OPTIONS} -no-reboot
 
-.PHONY: debug env kernel rootfs run test
+.PHONY: debug driver env kernel rootfs run test
+
+driver:
+	bear --append --output ${PWD}/compile_commands.json -- \
+		make -C ${PWD}/driver KDIR=${PWD}/kernel -j ${NPROC}
+	cp ${PWD}/driver/yakvm.ko ${PWD}/shares
+	@echo -e '\033[0;32m[*]\033[0mbuild the yakvm kernel module'
 
 kernel:
 	if [ ! -d ${PWD}/kernel ]; then \
@@ -67,7 +73,7 @@ rootfs:
 	cd ${PWD}/rootfs; sudo find . | sudo cpio -o --format=newc -F ${PWD}/rootfs.cpio >/dev/null
 	@echo -e '\033[0;32m[*]\033[0mbuild the rootfs'
 
-env: kernel rootfs
+env: kernel rootfs driver
 	@echo -e '\033[0;32m[*]\033[0mbuild the yakvm environment'
 
 run:

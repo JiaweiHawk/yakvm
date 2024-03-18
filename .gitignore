@@ -14,3 +14,10 @@
 !.github/workflows
 .github/workflows/*
 !.github/workflows/main.yml
+
+# pattern for files in driver directory
+!driver
+driver/*
+!driver/Kbuild
+!driver/main.c
+!driver/Makefile

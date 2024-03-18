@@ -14,7 +14,7 @@ With this image, you can try **kernel-based virtual machine** in the image.
 
 ## boot the qemu
 
-Run the ```make run``` to boot up the qemu.
+Run the ```make run``` to boot up the qemu with **yakvm.ko** in **/mnt/shares** on guest.
 
 ## debug the yakvm
 

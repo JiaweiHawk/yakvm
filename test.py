@@ -97,8 +97,11 @@ if __name__ == "__main__":
         qemu.runtil("login:", timeout=args.timeout)
         qemu.write("root\n")
 
-        qemu.execute("whoami")
-        qemu.runtil("root", timeout=args.timeout)
+        qemu.execute("insmod /mnt/shares/yakvm.ko")
+        qemu.runtil("initialize yakvm", timeout=args.timeout)
+
+        qemu.execute("rmmod yakvm")
+        qemu.runtil("cleanup yakvm", timeout=args.timeout)
 
     except:
         traceback.print_exc()

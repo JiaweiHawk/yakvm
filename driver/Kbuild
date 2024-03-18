@@ -1,0 +1,2 @@
+obj-m   := yakvm.o
+yakvm-y	:= main.o
