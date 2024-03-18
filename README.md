@@ -24,7 +24,34 @@ Run the ```make debug``` to debug the **YAKVM** on the yakvm environment
 
 Run the ```make test``` to run the tests on the yakvm environment
 
+# Design
+
+## VMM interface
+
+```
+                  ┌────────┐
+                  │emulator├───────────┬──────────────┐
+                  └────▲───┘           │              │
+                       │               │              │
+                     fd│             fd│            fd│
+user space             │               │              │
+───────────────────────┼───────────────┼──────────────┼────────
+kernel space           │               │              │
+                       │               │              │
+                  ┌────▼─────┐  ┌──────▼────────┐     │
+                  │/dev/yakvm│  │virtual machine│     │
+                  └────▲─────┘  └──────▲────────┘     │
+                       │               │              │
+                       │               │      ┌───────▼───────┐
+                 ┌─────▼──────┐        │      │virtual machine│
+                 │yakvm driver│        │      └───────▲───────┘
+                 └─────┬──────┘        │              │
+                       │               │              │
+                       └───────────────┴──────────────┘
+```
+
 # Reference
 
 - [pandengyang/peach](https://github.com/pandengyang/peach)
 - [AMD/Secure virtual machine architecture reference manual](https://www.0x04.net/doc/amd/33047.pdf)
+- [david942j/kvm-kernel-example](https://github.com/david942j/kvm-kernel-example)
