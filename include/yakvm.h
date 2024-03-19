@@ -26,6 +26,19 @@
         } while(0)
     #endif // __KERNEL__
 
+    /* use assert for both kernel and user */
+    #ifdef __KERNEL__
+        #include <linux/panic.h>
+        #define assert(condition) do { \
+            if (!(condition)) { \
+                panic(LOG_ERR "[yaf(%s:%d)]: '%s' assertion failed\n", \
+                      __FILE__, __LINE__, #condition); \
+            } \
+        } while(0)
+    #else // __KERNEL__
+        #include <assert.h>
+    #endif // __KERNEL__
+
     #ifdef __KERNEL__
         #define YAKVM_MAX_FDNAME        32
     #endif // __KERNEL__
