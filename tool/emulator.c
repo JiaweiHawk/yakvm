@@ -3,11 +3,12 @@
 #include <string.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
+#include "../include/vm.h"
 #include "../include/yakvm.h"
 
 int main(int argc, char *argv[])
 {
-    int yakvmfd, vmfd, ret;
+    int yakvmfd, vmfd, cpufd, ret;
 
     yakvmfd = open("/dev/yakvm", O_RDWR | O_CLOEXEC);
     if (yakvmfd < 0) {
@@ -21,11 +22,21 @@ int main(int argc, char *argv[])
         ret = errno;
         log(LOG_ERR, "ioctl(YAKVM_CREATE_VM) failed with error %s",
             strerror(errno));
-        goto put_yakvm;
+        goto close_yakvmfd;
     }
 
+    cpufd = ioctl(vmfd, YAKVM_CREATE_VCPU);
+    if (cpufd < 0) {
+        ret = errno;
+        log(LOG_ERR, "ioctl(YAKVM_CREATE_VCPU) failed with error %s",
+            strerror(errno));
+        goto close_vmfd;
+    }
+
+    close(cpufd);
+close_vmfd:
     close(vmfd);
-put_yakvm:
+close_yakvmfd:
     close(yakvmfd);
 
     return ret;

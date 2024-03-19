@@ -26,6 +26,10 @@
         } while(0)
     #endif // __KERNEL__
 
+    #ifdef __KERNEL__
+        #define YAKVM_MAX_FDNAME        32
+    #endif // __KERNEL__
+
     /* ioctls for /dev/kvm fds */
     #define YAKVMIO             0x29
     #define YAKVM_CREATE_VM     _IO(YAKVMIO,   0x00) /* returns a VM fd */
