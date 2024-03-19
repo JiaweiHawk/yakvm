@@ -26,4 +26,8 @@
         } while(0)
     #endif // __KERNEL__
 
+    /* ioctls for /dev/kvm fds */
+    #define YAKVMIO             0x29
+    #define YAKVM_CREATE_VM     _IO(YAKVMIO,   0x00) /* returns a VM fd */
+
 #endif // __YAKVM_H_
