@@ -1,3 +1,4 @@
+#include <asm/processor.h>
 #include <asm-generic/errno.h>
 #include <asm-generic/fcntl.h>
 #include <linux/anon_inodes.h>
@@ -5,6 +6,7 @@
 #include <linux/file.h>
 #include <linux/miscdevice.h>
 #include <linux/module.h>
+#include <linux/smp.h>
 #include "../include/vm.h"
 #include "../include/yakvm.h"
 
@@ -91,9 +93,37 @@ static struct miscdevice yakvm_dev = {
 	&yakvm_chardev_ops,
 };
 
+/*
+ * check whether cpu support SVM according to
+ * "Appendix B" on page 117 at https://www.0x04.net/doc/amd/33047.pdf
+ */
+static bool is_svm_supported(void)
+{
+	int cpu = smp_processor_id();
+	struct cpuinfo_x86 *c = &cpu_data(cpu);
+
+	if (c->x86_vendor != X86_VENDOR_AMD) {
+		log(LOG_ERR, "CPU %d is not AMD", cpu);
+		return false;
+	}
+
+	if (!cpu_has(c, X86_FEATURE_SVM)) {
+		log(LOG_ERR, "SVM not supported by CPU %d", cpu);
+		return false;
+	}
+
+	return true;
+}
+
 static int yakvm_init(void)
 {
     int ret;
+
+	/* check whether cpu support SVM */
+	if (!is_svm_supported()) {
+		log(LOG_ERR, "SVM is not supported on this platform");
+        return 0;
+	}
 
 	/* exposes "/dev/yakvm" device to userspace */
 	ret = misc_register(&yakvm_dev);
