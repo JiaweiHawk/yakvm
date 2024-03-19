@@ -102,7 +102,7 @@ if __name__ == "__main__":
 
         qemu.execute("/mnt/shares/emulator")
         qemu.runtil("build a virtual machine based on YAKVM", timeout=args.timeout)
-        qemu.runtil("ioctl(YAKVM_CREATE_VM) failed with error Function not implemented", timeout=args.timeout)
+        qemu.runtil("create the vm successfully", timeout=args.timeout)
 
         qemu.execute("rmmod yakvm")
         qemu.runtil("cleanup yakvm", timeout=args.timeout)

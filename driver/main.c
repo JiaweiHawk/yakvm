@@ -3,6 +3,7 @@
 #include <asm-generic/fcntl.h>
 #include <linux/anon_inodes.h>
 #include <linux/export.h>
+#include <linux/err.h>
 #include <linux/file.h>
 #include <linux/miscdevice.h>
 #include <linux/module.h>
@@ -14,48 +15,28 @@
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Hawkins Jiawei");
 
-#define YAKVM_MAX_FDNAME		12
-
 /* create the vm and return the vm fd */
 static int yakvm_dev_ioctl_create_vm(void)
 {
-	char fdname[YAKVM_MAX_FDNAME];
-	int r, fd;
+	int r;
 	struct vm *vm;
-	struct file *file;
 
-	fd = get_unused_fd_flags(O_CLOEXEC);
-	if (fd < 0) {
-		log(LOG_ERR, "get_unused_fd_flags() failed "
-			"with error code %d", fd);
-		return fd;
-	}
-
-	snprintf(fdname, sizeof(fdname), "%d", fd);
-
-	vm = yakvm_create_vm(fdname);
+	vm = yakvm_create_vm();
 	if (IS_ERR(vm)) {
 		r = PTR_ERR(vm);
 		log(LOG_ERR, "yakvm_create_vm() failed "
 			"with error code %d", r);
-		goto put_fd;
+		return r;
 	}
 
-	file = anon_inode_getfile("kvm-vm", &yakvm_vm_fops, vm, O_RDWR);
-	if (IS_ERR(file)) {
-		r = PTR_ERR(file);
+	r = anon_inode_getfd("kvm-vm", &yakvm_vm_fops, vm, O_RDWR);
+	if (r < 0) {
 		log(LOG_ERR, "anon_inode_getfile() failed "
 			"with error code %d", r);
-		goto put_vm;
+		yakvm_destroy_vm(vm);
+		return r;
 	}
 
-	fd_install(fd, file);
-	return fd;
-
-put_vm:
-	yakvm_put_vm(vm);
-put_fd:
-	put_unused_fd(fd);
 	return r;
 }
 

@@ -4,14 +4,16 @@
 
     #ifdef __KERNEL__
         /* virtual machine data structure */
+        #define YAKVM_VM_MAX_ID         32
         struct vm {
+            char id[YAKVM_VM_MAX_ID];
         };
 
         /* create the vm */
-        extern struct vm* yakvm_create_vm(const char *fdname);
+        extern struct vm* yakvm_create_vm(void);
 
-        /* put the vm */
-        extern void yakvm_put_vm(struct vm *vm);
+        /* destory the vm */
+        extern void yakvm_destroy_vm(struct vm *vm);
 
         #include <linux/fs.h>
         /* interface for userspace-kvm interaction */
