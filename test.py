@@ -101,8 +101,8 @@ if __name__ == "__main__":
         qemu.runtil("initialize yakvm", timeout=args.timeout)
 
         qemu.execute("/mnt/shares/emulator")
-        qemu.runtil("build a virtual machine based on YAKVM", timeout=args.timeout)
-        qemu.runtil("create the vm successfully", timeout=args.timeout)
+        qemu.runtil("create the kvm kvm", timeout=args.timeout)
+        qemu.runtil("destroy the kvm kvm", timeout=args.timeout)
 
         qemu.execute("rmmod yakvm")
         qemu.runtil("cleanup yakvm", timeout=args.timeout)
