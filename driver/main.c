@@ -76,7 +76,7 @@ static struct miscdevice yakvm_dev = {
 
 /*
  * check whether cpu support SVM according to
- * "Appendix B" on page 117 at https://www.0x04.net/doc/amd/33047.pdf
+ * "Appendix B" on page 91 at https://www.0x04.net/doc/amd/33047.pdf
  */
 static bool is_svm_supported(void)
 {
