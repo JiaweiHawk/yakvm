@@ -211,4 +211,8 @@
 
         #endif // __KERNEL__
 
+        #include "../include/yakvm.h"
+        /* ioctls for vcpu fds */
+        #define YAKVM_RUN               _IO(YAKVMIO,   0x20)
+
 #endif // __YAKVM_CPU_H_

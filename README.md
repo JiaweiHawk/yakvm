@@ -60,3 +60,4 @@ kernel space           │            │   │   │         │  │   │
 - [AMD/Secure virtual machine architecture reference manual](https://www.0x04.net/doc/amd/33047.pdf)
 - [david942j/kvm-kernel-example](https://github.com/david942j/kvm-kernel-example)
 - [yifengyou/learn-kvm](https://github.com/yifengyou/learn-kvm/blob/master/docs/虚拟化实现技术/虚拟化实现技术.md#amd虚拟化)
+- [eliaskousk/vmrun](https://github.com/eliaskousk/vmrun/tree/dev)

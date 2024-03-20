@@ -1,3 +1,4 @@
+#include <asm/io.h>
 #include <linux/gfp_types.h>
 #include <linux/mutex.h>
 #include <linux/slab.h>
@@ -13,6 +14,23 @@ static int yakvm_vcpu_release(struct inode *inode, struct file *filp)
         return 0;
 }
 
+/*
+ * run virtual machine with *vmrun* according to
+ * "4.2" on page 81 at
+ * https://www.0x04.net/doc/amd/33047.pdf
+ */
+static int yakvm_vcpu_run(struct vcpu *vcpu) {
+
+        asm volatile (
+                "movq %0, %%rax\n\t"
+                "vmrun\n\t"
+                :
+                :"r"(virt_to_phys(vcpu->vmcb))
+        );
+
+        return 0;
+}
+
 static long yakvm_vcpu_ioctl(struct file *filp, unsigned int ioctl,
                              unsigned long arg)
 {
@@ -23,6 +41,9 @@ static long yakvm_vcpu_ioctl(struct file *filp, unsigned int ioctl,
                 return -EINTR;
 
         switch (ioctl) {
+                case YAKVM_RUN:
+                        r = yakvm_vcpu_run(vcpu);
+                        break;
                 default:
                         log(LOG_ERR, "yakvm_vm_ioctl() get unknown ioctl %d",
                             ioctl);

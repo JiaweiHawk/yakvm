@@ -3,6 +3,7 @@
 #include <string.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
+#include "../include/cpu.h"
 #include "../include/vm.h"
 #include "../include/yakvm.h"
 
@@ -34,6 +35,8 @@ int main(int argc, char *argv[])
         }
 
         assert((ioctl(vmfd, YAKVM_CREATE_VCPU) == -1) && (errno == EEXIST));
+
+        ioctl(cpufd, YAKVM_RUN);
 
         close(cpufd);
 close_vmfd:
