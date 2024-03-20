@@ -195,6 +195,7 @@
                 #include "vm.h"
                 /* virtual cpu data structure */
                 struct vcpu {
+                        struct mutex lock;
                         struct vmcb *vmcb;
                         struct vm *vm;
                 };

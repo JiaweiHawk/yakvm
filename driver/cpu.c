@@ -16,14 +16,23 @@ static int yakvm_vcpu_release(struct inode *inode, struct file *filp)
 static long yakvm_vcpu_ioctl(struct file *filp, unsigned int ioctl,
                              unsigned long arg)
 {
+        struct vcpu *vcpu = filp->private_data;
+        int r = 0;
+
+        if (mutex_lock_killable(&vcpu->lock))
+                return -EINTR;
+
         switch (ioctl) {
                 default:
                         log(LOG_ERR, "yakvm_vm_ioctl() get unknown ioctl %d",
                             ioctl);
-                        return -EINVAL;
+                        r = -EINVAL;
+                        break;
         }
 
-        return 0;
+
+        mutex_unlock(&vcpu->lock);
+        return r;
 }
 
 /*
@@ -60,6 +69,7 @@ struct vcpu* yakvm_create_vcpu(struct vm *vm)
         }
 
         /* initialize the vcpu */
+        mutex_init(&vcpu->lock);
         vcpu->vmcb = vmcb;
         vcpu->vm = vm;
 
