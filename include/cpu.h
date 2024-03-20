@@ -196,8 +196,8 @@
         #include "vm.h"
         /* virtual cpu data structure */
         struct vcpu {
-            struct vmcb *vmcb;
-            struct vm *vm;
+                struct vmcb *vmcb;
+                struct vm *vm;
         };
 
         /* create the vcpu */

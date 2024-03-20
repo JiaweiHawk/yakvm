@@ -8,38 +8,38 @@
 
 int main(int argc, char *argv[])
 {
-    int yakvmfd, vmfd, cpufd, ret;
+        int yakvmfd, vmfd, cpufd, ret;
 
-    yakvmfd = open("/dev/yakvm", O_RDWR | O_CLOEXEC);
-    if (yakvmfd < 0) {
-        ret = errno;
-        log(LOG_ERR, "open(\"/dev/yakvm\") failed with error %s",
-            strerror(errno));
-    }
+        yakvmfd = open("/dev/yakvm", O_RDWR | O_CLOEXEC);
+        if (yakvmfd < 0) {
+                ret = errno;
+                log(LOG_ERR, "open(\"/dev/yakvm\") failed with error %s",
+                    strerror(errno));
+        }
 
-    vmfd = ioctl(yakvmfd, YAKVM_CREATE_VM);
-    if (vmfd < 0) {
-        ret = errno;
-        log(LOG_ERR, "ioctl(YAKVM_CREATE_VM) failed with error %s",
-            strerror(errno));
-        goto close_yakvmfd;
-    }
+        vmfd = ioctl(yakvmfd, YAKVM_CREATE_VM);
+        if (vmfd < 0) {
+                ret = errno;
+                log(LOG_ERR, "ioctl(YAKVM_CREATE_VM) failed with error %s",
+                    strerror(errno));
+                goto close_yakvmfd;
+        }
 
-    cpufd = ioctl(vmfd, YAKVM_CREATE_VCPU);
-    if (cpufd < 0) {
-        ret = errno;
-        log(LOG_ERR, "ioctl(YAKVM_CREATE_VCPU) failed with error %s",
-            strerror(errno));
-        goto close_vmfd;
-    }
+        cpufd = ioctl(vmfd, YAKVM_CREATE_VCPU);
+        if (cpufd < 0) {
+                ret = errno;
+                log(LOG_ERR, "ioctl(YAKVM_CREATE_VCPU) failed with error %s",
+                    strerror(errno));
+                goto close_vmfd;
+        }
 
-    assert((ioctl(vmfd, YAKVM_CREATE_VCPU) == -1) && (errno == EEXIST));
+        assert((ioctl(vmfd, YAKVM_CREATE_VCPU) == -1) && (errno == EEXIST));
 
-    close(cpufd);
+        close(cpufd);
 close_vmfd:
-    close(vmfd);
+        close(vmfd);
 close_yakvmfd:
-    close(yakvmfd);
+        close(yakvmfd);
 
-    return ret;
+        return ret;
 }

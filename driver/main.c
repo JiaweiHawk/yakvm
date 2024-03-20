@@ -1,9 +1,9 @@
-#include <asm/processor.h>
 #include <asm-generic/errno.h>
 #include <asm-generic/fcntl.h>
+#include <asm/processor.h>
 #include <linux/anon_inodes.h>
-#include <linux/export.h>
 #include <linux/err.h>
+#include <linux/export.h>
 #include <linux/file.h>
 #include <linux/miscdevice.h>
 #include <linux/module.h>
@@ -18,60 +18,60 @@ MODULE_AUTHOR("Hawkins Jiawei");
 /* create the vm and return the vm fd */
 static int yakvm_dev_ioctl_create_vm(void)
 {
-	int r;
-	struct vm *vm;
+        int r;
+        struct vm *vm;
 
-	vm = yakvm_create_vm();
-	if (IS_ERR(vm)) {
-		r = PTR_ERR(vm);
-		log(LOG_ERR, "yakvm_create_vm() failed "
-			"with error code %d", r);
-		return r;
-	}
+        vm = yakvm_create_vm();
+        if (IS_ERR(vm)) {
+                r = PTR_ERR(vm);
+                log(LOG_ERR, "yakvm_create_vm() failed "
+                    "with error code %d", r);
+                return r;
+        }
 
-	r = anon_inode_getfd("kvm-vm", &yakvm_vm_fops, vm, O_RDWR);
-	if (r < 0) {
-		log(LOG_ERR, "anon_inode_getfile() failed "
-			"with error code %d", r);
-		yakvm_destroy_vm(vm);
-		return r;
-	}
+        r = anon_inode_getfd("kvm-vm", &yakvm_vm_fops, vm, O_RDWR);
+        if (r < 0) {
+                log(LOG_ERR, "anon_inode_getfile() failed "
+                    "with error code %d", r);
+                yakvm_destroy_vm (vm);
+                return r;
+        }
 
-	return r;
+        return r;
 }
 
-static long yakvm_dev_ioctl(struct file *filp,
-			  unsigned int ioctl, unsigned long arg)
+static long yakvm_dev_ioctl(struct file *filp, unsigned int ioctl,
+                            unsigned long arg)
 {
-	int r;
+        int r;
 
-	switch (ioctl) {
-		case YAKVM_CREATE_VM:
-			r = yakvm_dev_ioctl_create_vm();
-			if (r < 0) {
-				log(LOG_ERR, "yakvm_dev_ioctl_create_vm() "
-					"failed with error code %d", r);
-			}
-			return r;
+        switch (ioctl) {
+                case YAKVM_CREATE_VM:
+                        r = yakvm_dev_ioctl_create_vm();
+                        if (r < 0) {
+                                log(LOG_ERR, "yakvm_dev_ioctl_create_vm() "
+                                    "failed with error code %d", r);
+                        }
+                        return r;
 
-		default:
-			log(LOG_ERR, "yakvm_dev_ioctl() get unknown ioctl %d",
-				ioctl);
-			return -EINVAL;
-	}
+                default:
+                        log(LOG_ERR, "yakvm_dev_ioctl() get unknown ioctl %d",
+                            ioctl);
+                        return -EINVAL;
+        }
 
-	return 0;
+        return 0;
 }
 
 static struct file_operations yakvm_chardev_ops = {
-	.unlocked_ioctl = yakvm_dev_ioctl,
+        .unlocked_ioctl = yakvm_dev_ioctl,
 };
 
 /* interface for userspace-kernelspace interaction */
 static struct miscdevice yakvm_dev = {
-	MISC_DYNAMIC_MINOR,
-	"yakvm",
-	&yakvm_chardev_ops,
+        MISC_DYNAMIC_MINOR,
+        "yakvm",
+        &yakvm_chardev_ops,
 };
 
 /*
@@ -80,48 +80,49 @@ static struct miscdevice yakvm_dev = {
  */
 static bool is_svm_supported(void)
 {
-	int cpu = smp_processor_id();
-	struct cpuinfo_x86 *c = &cpu_data(cpu);
+        int cpu = smp_processor_id();
+        struct cpuinfo_x86 *c = &cpu_data(cpu);
 
-	if (c->x86_vendor != X86_VENDOR_AMD) {
-		log(LOG_ERR, "CPU %d is not AMD", cpu);
-		return false;
-	}
+        if (c->x86_vendor != X86_VENDOR_AMD) {
+                log(LOG_ERR, "CPU %d is not AMD", cpu);
+                return false;
+        }
 
-	if (!cpu_has(c, X86_FEATURE_SVM)) {
-		log(LOG_ERR, "SVM not supported by CPU %d", cpu);
-		return false;
-	}
+        if (!cpu_has(c, X86_FEATURE_SVM)) {
+                log(LOG_ERR, "SVM not supported by CPU %d", cpu);
+                return false;
+        }
 
-	return true;
+        return true;
 }
 
 static int yakvm_init(void)
 {
-    int ret;
+        int ret;
 
-	/* check whether cpu support SVM */
-	if (!is_svm_supported()) {
-		log(LOG_ERR, "SVM is not supported on this platform");
+        /* check whether cpu support SVM */
+        if (!is_svm_supported()) {
+                log(LOG_ERR, "SVM is not supported on this platform");
+                return 0;
+        }
+
+        /* exposes "/dev/yakvm" device to userspace */
+        ret = misc_register(&yakvm_dev);
+        if (ret) {
+                log(LOG_ERR, "misc_register() failed with error code %d",
+                    ret);
+                return ret;
+        }
+
+        log(LOG_INFO, "initialize yakvm");
         return 0;
-	}
-
-	/* exposes "/dev/yakvm" device to userspace */
-	ret = misc_register(&yakvm_dev);
-	if (ret) {
-		log(LOG_ERR, "misc_register() failed with error code %d", ret);
-        return ret;
-	}
-
-    log(LOG_INFO, "initialize yakvm");
-    return 0;
 }
 
 static void yakvm_exit(void)
 {
-	misc_deregister(&yakvm_dev);
+        misc_deregister(&yakvm_dev);
 
-    log(LOG_INFO, "cleanup yakvm");
+        log(LOG_INFO, "cleanup yakvm");
 }
 
 module_init(yakvm_init);
