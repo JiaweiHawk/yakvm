@@ -2,18 +2,24 @@
 #include <asm-generic/fcntl.h>
 #include <asm/processor.h>
 #include <linux/anon_inodes.h>
+#include <linux/atomic/atomic-instrumented.h>
 #include <linux/err.h>
 #include <linux/export.h>
 #include <linux/file.h>
 #include <linux/miscdevice.h>
 #include <linux/module.h>
 #include <linux/smp.h>
+#include <linux/types.h>
 #include "../include/vm.h"
 #include "../include/yakvm.h"
 
 /* information for module */
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Hawkins Jiawei");
+
+#define YAKVM_INUSE     1
+#define YAKVM_UNUSE     0
+static atomic_t yakvm_status = ATOMIC_INIT(YAKVM_UNUSE);
 
 /* create the vm and return the vm fd */
 static int yakvm_dev_ioctl_create_vm(void)
@@ -100,6 +106,11 @@ static int yakvm_init(void)
 {
         int ret;
 
+        if (atomic_xchg(&yakvm_status, YAKVM_INUSE) == YAKVM_INUSE) {
+                log(LOG_ERR, "yakvm is inuse");
+                return -EBUSY;
+        }
+
         /* check whether cpu support SVM */
         if (!is_svm_supported()) {
                 log(LOG_ERR, "SVM is not supported on this platform");
@@ -121,6 +132,8 @@ static int yakvm_init(void)
 static void yakvm_exit(void)
 {
         misc_deregister(&yakvm_dev);
+
+        assert(atomic_xchg(&yakvm_status, YAKVM_UNUSE) == YAKVM_INUSE);
 
         log(LOG_INFO, "cleanup yakvm");
 }
