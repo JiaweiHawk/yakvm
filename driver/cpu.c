@@ -51,7 +51,6 @@ static long yakvm_vcpu_ioctl(struct file *filp, unsigned int ioctl,
                         break;
         }
 
-
         mutex_unlock(&vcpu->lock);
         return r;
 }
