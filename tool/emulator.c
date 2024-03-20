@@ -33,7 +33,7 @@ int main(int argc, char *argv[])
         goto close_vmfd;
     }
 
-    assert(ioctl(vmfd, YAKVM_CREATE_VCPU) == -EEXIST);
+    assert((ioctl(vmfd, YAKVM_CREATE_VCPU) == -1) && (errno == EEXIST));
 
     close(cpufd);
 close_vmfd:
