@@ -55,30 +55,34 @@ static int yakvm_vm_ioctl_create_vcpu(struct vm *vm)
 		goto out;
 	}
 
+	mutex_lock(&vm->lock);
+	if (vm->vcpu) {
+		mutex_unlock(&vm->lock);
+		r = -EEXIST;
+		log(LOG_ERR, "vcpu has been created for kvm %s", vm->id);
+		goto destroy_vcpu;
+	}
+
+	vm->vcpu = vcpu;
+	mutex_unlock(&vm->lock);
+	yakvm_get_vm(vm);
+
 	snprintf(fdname, sizeof(fdname), "kvm-vcpu");
 	fd = anon_inode_getfd(fdname, &yakvm_vcpu_fops, vcpu, O_RDWR);
 	if (fd < 0) {
 		r = fd;
 		log(LOG_ERR, "anon_inode_getfd() failed "
 			"with error code %d", r);
-		goto destroy_vcpu;
+		goto put_vm;
 	}
 
-	mutex_lock(&vm->lock);
-	if (vm->vcpu) {
-		mutex_unlock(&vm->lock);
-		r = -EEXIST;
-		log(LOG_ERR, "vcpu has been created for kvm %s", vm->id);
-		goto close_fd;
-	}
-
-	vm->vcpu = vcpu;
-	yakvm_get_vm(vm);
-	mutex_unlock(&vm->lock);
 	return fd;
 
-close_fd:
-	close_fd(r);
+put_vm:
+        mutex_lock(&vm->lock);
+        vm->vcpu = NULL;
+        mutex_unlock(&vm->lock);
+        yakvm_put_vm(vm);
 destroy_vcpu:
 	yakvm_destroy_vcpu(vcpu);
 out:
