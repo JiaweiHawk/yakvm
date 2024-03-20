@@ -98,7 +98,7 @@ static long yakvm_vm_ioctl(struct file *filp, unsigned int ioctl, unsigned long 
                 case YAKVM_CREATE_VCPU:
                         r = yakvm_vm_ioctl_create_vcpu(vm);
                         if (r < 0) {
-                                log (LOG_ERR,
+                                log(LOG_ERR,
                                      "yakvm_dev_ioctl_create_vm() "
                                      "failed with error code %d", r);
                         }
