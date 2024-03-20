@@ -13,12 +13,26 @@ static int yakvm_vcpu_release(struct inode *inode, struct file *filp)
         return 0;
 }
 
+static long yakvm_vcpu_ioctl(struct file *filp, unsigned int ioctl,
+                             unsigned long arg)
+{
+        switch (ioctl) {
+                default:
+                        log(LOG_ERR, "yakvm_vm_ioctl() get unknown ioctl %d",
+                            ioctl);
+                        return -EINVAL;
+        }
+
+        return 0;
+}
+
 /*
  * interface for userspace-vcpu interaction, describe how the
  * userspace emulator can manipulate the virtual cpu
  */
 const struct file_operations yakvm_vcpu_fops = {
         .release = yakvm_vcpu_release,
+        .unlocked_ioctl = yakvm_vcpu_ioctl,
 };
 
 /* create the vcpu */
