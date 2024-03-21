@@ -1,3 +1,4 @@
+#include <asm/msr.h>
 #include <asm-generic/errno.h>
 #include <asm-generic/fcntl.h>
 #include <asm/processor.h>
@@ -102,6 +103,18 @@ static bool is_svm_supported(void)
         return true;
 }
 
+/*
+ * Before any SVM instruction can be used, *EFER.SVME* must be
+ * set to 1 according to "2.1" on page 5 at
+ * https://www.0x04.net/doc/amd/33047.pdf
+ */
+static void yakvm_cpu_svm_enable(void *data)
+{
+        uint64_t efer;
+        rdmsrl(MSR_EFER, efer);
+        wrmsrl(MSR_EFER, efer | EFER_SVME);
+}
+
 static int yakvm_init(void)
 {
         int ret;
@@ -124,6 +137,9 @@ static int yakvm_init(void)
                     ret);
                 return ret;
         }
+
+        /* enable svm on cpus */
+        on_each_cpu(yakvm_cpu_svm_enable, NULL, 1);
 
         log(LOG_INFO, "initialize yakvm");
         return 0;
