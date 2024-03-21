@@ -114,7 +114,7 @@ static int yakvm_init(void)
         /* check whether cpu support SVM */
         if (!is_svm_supported()) {
                 log(LOG_ERR, "SVM is not supported on this platform");
-                return 0;
+                return -EOPNOTSUPP;
         }
 
         /* exposes "/dev/yakvm" device to userspace */
