@@ -5,6 +5,7 @@
 #include <linux/gfp_types.h>
 #include <linux/mm.h>
 #include <linux/mutex.h>
+#include <linux/preempt.h>
 #include <linux/slab.h>
 #include "../include/cpu.h"
 #include "../include/vm.h"
@@ -40,17 +41,11 @@ static int yakvm_vcpu_run(struct vcpu *vcpu)
 {
 
         /*
-         * clears the global interrupt flag, so all external interrupts
-         * are disabled according to "15.17" on page 529 at
-         * https://www.amd.com/content/dam/amd/en/documents/processor-tech-docs/programmer-references/24593.pdf.
-         *
          * This ensures that the vcpu is binded on the physical cpu
          * instead of being scheduled to other physical cpus during
          * vmrun due to interrupts.
          */
-        asm volatile (
-                "clgi\n\t"
-        );
+        preempt_disable();
 
         /*
          * physical cpu *VM_HSAVE_PA* MSR holds the physical address
@@ -70,10 +65,7 @@ static int yakvm_vcpu_run(struct vcpu *vcpu)
                 :"a"(virt_to_phys(vcpu->vmcb))
         );
 
-        /* enable all external interrupts */
-        asm volatile (
-                "stgi\n\t"
-        );
+        preempt_enable();
 
         /* handle the *vmexit* */
         return yakvm_vcpu_handle_exit(vcpu);
