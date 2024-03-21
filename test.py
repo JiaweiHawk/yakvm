@@ -102,7 +102,6 @@ if __name__ == "__main__":
 
         qemu.execute("/mnt/shares/emulator")
         qemu.runtil("yakvm_create_vm() creates the kvm kvm-", timeout=args.timeout)
-        qemu.runtil("invalid opcode", timeout=args.timeout)
         qemu.runtil("yakvm_destroy_vm() destroys the kvm kvm-", timeout=args.timeout)
 
         #qemu.execute("rmmod yakvm")

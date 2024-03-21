@@ -19,11 +19,25 @@ static int yakvm_vcpu_release(struct inode *inode, struct file *filp)
 }
 
 /*
+ * When the *vmrun* instruction exits(back to the host), an
+ * exit/reason code is stored in the *EXITCODE* field in the
+ * *vmcb* according to *Appendix D* on page 103 at
+ * https://www.0x04.net/doc/amd/33047.pdf
+ */
+static int yakvm_vcpu_handle_exit(struct vcpu *vcpu)
+{
+        uint32_t exit_code = vcpu->vmcb->control.exit_code;
+        assert(exit_code == -1);
+        return exit_code;
+}
+
+/*
  * run virtual machine with *vmrun* according to
  * "4.2" on page 81 at
  * https://www.0x04.net/doc/amd/33047.pdf
  */
-static int yakvm_vcpu_run(struct vcpu *vcpu) {
+static int yakvm_vcpu_run(struct vcpu *vcpu)
+{
 
         /*
          * clears the global interrupt flag, so all external interrupts
@@ -60,7 +74,8 @@ static int yakvm_vcpu_run(struct vcpu *vcpu) {
                 "stgi\n\t"
         );
 
-        return 0;
+        /* handle the *vmexit* */
+        return yakvm_vcpu_handle_exit(vcpu);
 }
 
 static long yakvm_vcpu_ioctl(struct file *filp, unsigned int ioctl,
