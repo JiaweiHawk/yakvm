@@ -21,11 +21,29 @@ static int yakvm_vcpu_release(struct inode *inode, struct file *filp)
  */
 static int yakvm_vcpu_run(struct vcpu *vcpu) {
 
+        /*
+         * clears the global interrupt flag, so all external interrupts
+         * are disabled according to "4.2" on page 72 at
+         * https://www.0x04.net/doc/amd/33047.pdf.
+         *
+         * This ensures that the vcpu is binded on the physical cpu
+         * instead of being scheduled to other physical cpus during
+         * vmrun due to interrupts.
+         */
+        asm volatile (
+                "clgi\n\t"
+        );
+
         asm volatile (
                 "movq %0, %%rax\n\t"
                 "vmrun\n\t"
                 :
                 :"r"(virt_to_phys(vcpu->vmcb))
+        );
+
+        /* enable all external interrupts */
+        asm volatile (
+                "stgi\n\t"
         );
 
         return 0;
