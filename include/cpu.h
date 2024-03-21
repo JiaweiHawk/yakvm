@@ -197,6 +197,7 @@
                 struct vcpu {
                         struct mutex lock;
                         struct vmcb *vmcb;
+                        struct page *hsave;
                         struct vm *vm;
                 };
 
