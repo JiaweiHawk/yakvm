@@ -7,7 +7,8 @@
                 /*
                  * The control area of the VMCB containing various control
                  * bits including the intercept vector accroding to
-                 * "Appendix C" on page 93 at https://www.0x04.net/doc/amd/33047.pdf
+                 * "Appendix B" on page 730 at
+                 * https://www.amd.com/content/dam/amd/en/documents/processor-tech-docs/programmer-references/24593.pdf
                  */
 
                 /*
@@ -20,6 +21,7 @@
                         INTERCEPT_EXCEPTION,
                         INTERCEPT_WORD3,
                         INTERCEPT_WORD4,
+                        INTERCEPT_WORD5,
                         MAX_INTERCEPT,
                 };
                 enum {
@@ -95,17 +97,40 @@
                         INTERCEPT_RDTSCP,
                         INTERCEPT_ICEBP,
                         INTERCEPT_WBINVD,
+                        INTERCEPT_MONITOR,
+                        INTERCEPT_MWAIT,
+                        INTERCEPT_MWAIT_COND,
+                        INTERCEPT_XSETBV,
+                        INTERCEPT_RDPRU,
+                        TRAP_EFER_WRITE,
+                        TRAP_CR0_WRITE,
+                        TRAP_CR1_WRITE,
+                        TRAP_CR2_WRITE,
+                        TRAP_CR3_WRITE,
+                        TRAP_CR4_WRITE,
+                        TRAP_CR5_WRITE,
+                        TRAP_CR6_WRITE,
+                        TRAP_CR7_WRITE,
+                        TRAP_CR8_WRITE,
+                        /* Byte offset 014h (word 5) */
+                        INTERCEPT_INVLPGB = 160,
+                        INTERCEPT_INVLPGB_ILLEGAL,
+                        INTERCEPT_INVPCID,
+                        INTERCEPT_MCOMMIT,
+                        INTERCEPT_TLBSYNC,
                 };
 
                 struct __attribute__ ((__packed__)) vmcb_control_area {
                         uint32_t intercepts[MAX_INTERCEPT];
-                        uint32_t reserved_1[16 - MAX_INTERCEPT];
+                        uint32_t reserved_1[15 - MAX_INTERCEPT];
+                        uint16_t pause_filter_thresh;
+                        uint16_t pause_filter_count;
                         uint64_t iopm_base_pa;
                         uint64_t msrpm_base_pa;
                         uint64_t tsc_offset;
                         uint32_t asid;
-                        uint8_t  tlb_ctl;
-                        uint8_t  reserved_2[3];
+                        uint8_t tlb_ctl;
+                        uint8_t reserved_2[3];
                         uint32_t int_ctl;
                         uint32_t int_vector;
                         uint32_t int_state;
@@ -116,20 +141,36 @@
                         uint64_t exit_info_2;
                         uint32_t exit_int_info;
                         uint32_t exit_int_info_err;
-                        uint8_t  np_enable;
-                        uint8_t  reserved_4[23];
+                        uint64_t nested_ctl;
+                        uint64_t avic_vapic_bar;
+                        uint64_t ghcb_gpa;
                         uint32_t event_inj;
                         uint32_t event_inj_err;
                         uint64_t nested_cr3;
                         uint64_t virt_ext;
-                        uint8_t  reserved_5[832];
-                } __packed;
-                static_assert(sizeof(struct vmcb_control_area) == 1024);
+                        uint32_t clean;
+                        uint32_t reserved_5;
+                        uint64_t next_rip;
+                        uint8_t insn_len;
+                        uint8_t insn_bytes[15];
+                        uint64_t avic_backing_page;	/* Offset 0xe0 */
+                        uint8_t reserved_6[8];	/* Offset 0xe8 */
+                        uint64_t avic_logical_id;	/* Offset 0xf0 */
+                        uint64_t avic_physical_id;	/* Offset 0xf8 */
+                        uint8_t reserved_7[8];
+                        uint64_t vmsa_pa;		/* Used for an SEV-ES guest */
+                        uint8_t reserved_8[720];
+                        /*
+                         * Offset 0x3e0, 32 bytes reserved
+                         * for use by hypervisor/software.
+                         */
+                        uint8_t reserved_sw[32];
+                };
 
                 /*
                  * The state-save area of the VMCB containing saved guest state
-                 * accroding to "Appendix C" on page 99 at
-                 * https://www.0x04.net/doc/amd/33047.pdf
+                 * accroding to "Appendix B" on page 736 at
+                 * https://www.amd.com/content/dam/amd/en/documents/processor-tech-docs/programmer-references/24593.pdf
                  */
                 struct __attribute__ ((__packed__)) vmcb_seg {
                         uint16_t selector;
@@ -139,7 +180,7 @@
                 };
 
                 /* Save area definition for legacy and SEV-MEM guests */
-                struct  __attribute__ ((__packed__)) vmcb_save_area {
+                struct __attribute__ ((__packed__)) vmcb_save_area {
                         struct vmcb_seg es;
                         struct vmcb_seg cs;
                         struct vmcb_seg ss;
@@ -151,39 +192,45 @@
                         struct vmcb_seg idtr;
                         struct vmcb_seg tr;
                         /* Reserved fields are named following their struct offset */
-                        uint8_t         reserved_0xa0[43];
-                        uint8_t         cpl;
-                        uint8_t         reserved_0xcc[4];
-                        uint64_t        efer;
-                        uint64_t        reserved_0xd8[112];
-                        uint64_t        cr4;
-                        uint64_t        cr3;
-                        uint64_t        cr0;
-                        uint64_t        dr7;
-                        uint64_t        dr6;
-                        uint64_t        rflags;
-                        uint64_t        rip;
-                        uint64_t        reserved_0x180[88];
-                        uint64_t        rsp;
-                        uint8_t         reserved_0x1e0[24];
-                        uint64_t        rax;
-                        uint64_t        star;
-                        uint64_t        lstar;
-                        uint64_t        cstar;
-                        uint64_t        sfmask;
-                        uint64_t        kernel_gs_base;
-                        uint64_t        sysenter_cs;
-                        uint64_t        sysenter_esp;
-                        uint64_t        sysenter_eip;
-                        uint64_t        cr2;
-                        uint8_t         reserved_0x248[32];
-                        uint64_t        g_pat;
-                        uint64_t        dbgctl;
-                        uint64_t        br_from;
-                        uint64_t        br_to;
-                        uint64_t        last_excp_from;
-                        uint64_t        last_excp_to;
+                        uint8_t reserved_0xa0[42];
+                        uint8_t vmpl;
+                        uint8_t cpl;
+                        uint8_t reserved_0xcc[4];
+                        uint64_t efer;
+                        uint8_t reserved_0xd8[112];
+                        uint64_t cr4;
+                        uint64_t cr3;
+                        uint64_t cr0;
+                        uint64_t dr7;
+                        uint64_t dr6;
+                        uint64_t rflags;
+                        uint64_t rip;
+                        uint8_t reserved_0x180[88];
+                        uint64_t rsp;
+                        uint64_t s_cet;
+                        uint64_t ssp;
+                        uint64_t isst_addr;
+                        uint64_t rax;
+                        uint64_t star;
+                        uint64_t lstar;
+                        uint64_t cstar;
+                        uint64_t sfmask;
+                        uint64_t kernel_gs_base;
+                        uint64_t sysenter_cs;
+                        uint64_t sysenter_esp;
+                        uint64_t sysenter_eip;
+                        uint64_t cr2;
+                        uint8_t reserved_0x248[32];
+                        uint64_t g_pat;
+                        uint64_t dbgctl;
+                        uint64_t br_from;
+                        uint64_t br_to;
+                        uint64_t last_excp_from;
+                        uint64_t last_excp_to;
+                        uint8_t reserved_0x298[72];
+                        uint64_t spec_ctrl;		/* Guest version of SPEC_CTRL at 0x2E0 */
                 };
+                static_assert(sizeof(struct vmcb_control_area) == 1024);
 
                 struct __attribute__ ((__packed__)) vmcb {
                         struct vmcb_control_area control;
@@ -197,7 +244,7 @@
                 struct vcpu {
                         struct mutex lock;
                         struct vmcb *vmcb;
-                        struct page *hsave;
+                        void *hsave;
                         struct vm *vm;
                 };
 
@@ -314,5 +361,6 @@
         #define SVM_EXIT_AVIC_INCOMPLETE_IPI            0x401
         #define SVM_EXIT_AVIC_UNACCELERATED_ACCESS      0x402
         #define SVM_EXIT_VMGEXIT                        0x403
-        #define SVM_EXIT_INVALID                        -1
+        #define SVM_EXIT_ERR                            -1
+
 #endif // __YAKVM_CPU_H_

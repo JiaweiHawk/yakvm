@@ -123,7 +123,7 @@ const struct file_operations yakvm_vm_fops = {
 };
 
 /* create the vm */
-struct vm * yakvm_create_vm ()
+struct vm * yakvm_create_vm(void)
 {
         struct vm *vm
             = kmalloc(sizeof (struct vm), GFP_KERNEL_ACCOUNT | __GFP_ZERO);

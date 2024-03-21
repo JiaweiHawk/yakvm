@@ -21,28 +21,28 @@ static int yakvm_vcpu_release(struct inode *inode, struct file *filp)
 /*
  * When the *vmrun* instruction exits(back to the host), an
  * exit/reason code is stored in the *EXITCODE* field in the
- * *vmcb* according to *Appendix D* on page 103 at
- * https://www.0x04.net/doc/amd/33047.pdf
+ * *vmcb* according to *Appendix C* on page 745 at
+ * https://www.amd.com/content/dam/amd/en/documents/processor-tech-docs/programmer-references/24593.pdf
  */
 static int yakvm_vcpu_handle_exit(struct vcpu *vcpu)
 {
         uint32_t exit_code = vcpu->vmcb->control.exit_code;
-        assert(exit_code == -1);
+        assert(exit_code == SVM_EXIT_ERR);
         return exit_code;
 }
 
 /*
  * run virtual machine with *vmrun* according to
- * "4.2" on page 81 at
- * https://www.0x04.net/doc/amd/33047.pdf
+ * "15.5" on page 81 at
+ * https://www.amd.com/content/dam/amd/en/documents/processor-tech-docs/programmer-references/24593.pdf
  */
 static int yakvm_vcpu_run(struct vcpu *vcpu)
 {
 
         /*
          * clears the global interrupt flag, so all external interrupts
-         * are disabled according to "4.2" on page 72 at
-         * https://www.0x04.net/doc/amd/33047.pdf.
+         * are disabled according to "15.17" on page 529 at
+         * https://www.amd.com/content/dam/amd/en/documents/processor-tech-docs/programmer-references/24593.pdf.
          *
          * This ensures that the vcpu is binded on the physical cpu
          * instead of being scheduled to other physical cpus during
@@ -55,13 +55,14 @@ static int yakvm_vcpu_run(struct vcpu *vcpu)
         /*
          * physical cpu *VM_HSAVE_PA* MSR holds the physical address
          * of a block of memory where *vmrun* save host state and from
-         * which *vmexit* reloads host state according to "E.4" on
-         * page 109 at https://www.0x04.net/doc/amd/33047.pdf.
+         * which *vmexit* reloads host state according to "15.30.4" on
+         * page 585 at
+         * https://www.amd.com/content/dam/amd/en/documents/processor-tech-docs/programmer-references/24593.pdf.
          *
          * Note that this setting is pcpu specific, so is should be
          * setted after the vcpu is binded to the pcpu.
          */
-        wrmsrl(MSR_VM_HSAVE_PA, page_to_pfn(vcpu->hsave) << PAGE_SHIFT);
+        wrmsrl(MSR_VM_HSAVE_PA, virt_to_phys(vcpu->hsave));
 
         asm volatile (
                 "vmrun %0\n\t"
@@ -116,7 +117,7 @@ struct vcpu* yakvm_create_vcpu(struct vm *vm)
 {
         struct vcpu *vcpu;
         struct vmcb *vmcb;
-        struct page *hsave;
+        void *hsave;
         void *ret;
 
         vcpu = kmalloc(sizeof(struct vcpu), GFP_KERNEL_ACCOUNT | __GFP_ZERO);
@@ -128,8 +129,8 @@ struct vcpu* yakvm_create_vcpu(struct vm *vm)
 
         /*
          * Virtual Machine Control Block(vmcb) should be a
-         * 4KB-aligned page accroding to "2.2" on page 5 at
-         * https://www.0x04.net/doc/amd/33047.pdf
+         * 4KB-aligned page accroding to "15.5" on page 500 at
+         * https://www.amd.com/content/dam/amd/en/documents/processor-tech-docs/programmer-references/24593.pdf
          */
         vmcb = kmalloc(4096, GFP_KERNEL_ACCOUNT | __GFP_ZERO);
         if (!vmcb) {
@@ -139,11 +140,12 @@ struct vcpu* yakvm_create_vcpu(struct vm *vm)
         }
 
         /*
-         * *vmrun* saves host state to *hsave*, *vmexit* reloads host state
-         * from *hsave* according to "E.4" on page 109 at
-         * https://www.0x04.net/doc/amd/33047.pdf
+         * *hsave* is a 4KB block of memory where *vmrun* saves host state,
+         * and from which *vmexit* reloads host state according to "15.30.4"
+         * on page 585 at
+         * https://www.amd.com/content/dam/amd/en/documents/processor-tech-docs/programmer-references/24593.pdf
          */
-        hsave = alloc_page(GFP_KERNEL);
+        hsave = kmalloc(4096, GFP_KERNEL_ACCOUNT | __GFP_ZERO);
         if (!hsave) {
                 log(LOG_ERR, "alloc_page() failed");
                 ret = ERR_PTR(-ENOMEM);
@@ -170,6 +172,6 @@ out:
 void yakvm_destroy_vcpu(struct vcpu *vcpu)
 {
         kfree(vcpu->vmcb);
-        __free_page(vcpu->hsave);
+        kfree(vcpu->hsave);
         kfree(vcpu);
 }

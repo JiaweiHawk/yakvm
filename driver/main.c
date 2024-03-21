@@ -83,7 +83,8 @@ static struct miscdevice yakvm_dev = {
 
 /*
  * check whether cpu support SVM according to
- * "Appendix B" on page 91 at https://www.0x04.net/doc/amd/33047.pdf
+ * "15.4" on page 499 at
+ * https://www.amd.com/content/dam/amd/en/documents/processor-tech-docs/programmer-references/24593.pdf
  */
 static bool is_svm_supported(void)
 {
@@ -105,8 +106,8 @@ static bool is_svm_supported(void)
 
 /*
  * Before any SVM instruction can be used, *EFER.SVME* must be
- * set to 1 according to "2.1" on page 5 at
- * https://www.0x04.net/doc/amd/33047.pdf
+ * set to 1 according to "15.4" on page 499 at
+ * https://www.amd.com/content/dam/amd/en/documents/processor-tech-docs/programmer-references/24593.pdf
  */
 static void yakvm_cpu_svm_enable(void *data)
 {
