@@ -50,10 +50,9 @@ static int yakvm_vcpu_run(struct vcpu *vcpu) {
         wrmsrl(MSR_VM_HSAVE_PA, page_to_pfn(vcpu->hsave) << PAGE_SHIFT);
 
         asm volatile (
-                "movq %0, %%rax\n\t"
-                "vmrun\n\t"
+                "vmrun %0\n\t"
                 :
-                :"r"(virt_to_phys(vcpu->vmcb))
+                :"a"(virt_to_phys(vcpu->vmcb))
         );
 
         /* enable all external interrupts */
