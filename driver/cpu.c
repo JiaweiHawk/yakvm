@@ -42,8 +42,7 @@ static int yakvm_vcpu_run(struct vcpu *vcpu)
 
         /*
          * This ensures that the vcpu is binded on the physical cpu
-         * instead of being scheduled to other physical cpus during
-         * vmrun due to interrupts.
+         * instead of being scheduled to other physical cpus.
          */
         preempt_disable();
 
