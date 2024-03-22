@@ -104,8 +104,8 @@ if __name__ == "__main__":
         qemu.runtil("yakvm_create_vm() creates the kvm kvm-", timeout=args.timeout)
         qemu.runtil("yakvm_destroy_vm() destroys the kvm kvm-", timeout=args.timeout)
 
-        #qemu.execute("rmmod yakvm")
-        #qemu.runtil("cleanup yakvm", timeout=args.timeout)
+        qemu.execute("rmmod yakvm")
+        qemu.runtil("cleanup yakvm", timeout=args.timeout)
 
     except:
         traceback.print_exc()
