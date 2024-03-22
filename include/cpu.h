@@ -172,6 +172,29 @@
                  * accroding to "Appendix B" on page 736 at
                  * https://www.amd.com/content/dam/amd/en/documents/processor-tech-docs/programmer-references/24593.pdf
                  */
+                #define SVM_SELECTOR_S_SHIFT 4
+                #define SVM_SELECTOR_DPL_SHIFT 5
+                #define SVM_SELECTOR_P_SHIFT 7
+                #define SVM_SELECTOR_AVL_SHIFT 8
+                #define SVM_SELECTOR_L_SHIFT 9
+                #define SVM_SELECTOR_DB_SHIFT 10
+                #define SVM_SELECTOR_G_SHIFT 11
+
+                #define SVM_SELECTOR_TYPE_MASK (0xf)
+                #define SVM_SELECTOR_S_MASK (1 << SVM_SELECTOR_S_SHIFT)
+                #define SVM_SELECTOR_DPL_MASK (3 << SVM_SELECTOR_DPL_SHIFT)
+                #define SVM_SELECTOR_P_MASK (1 << SVM_SELECTOR_P_SHIFT)
+                #define SVM_SELECTOR_AVL_MASK (1 << SVM_SELECTOR_AVL_SHIFT)
+                #define SVM_SELECTOR_L_MASK (1 << SVM_SELECTOR_L_SHIFT)
+                #define SVM_SELECTOR_DB_MASK (1 << SVM_SELECTOR_DB_SHIFT)
+                #define SVM_SELECTOR_G_MASK (1 << SVM_SELECTOR_G_SHIFT)
+
+                #define SVM_SELECTOR_WRITE_MASK (1 << 1)
+                #define SVM_SELECTOR_READ_MASK SVM_SELECTOR_WRITE_MASK
+                #define SVM_SELECTOR_CODE_MASK (1 << 3)
+                #define SEG_TYPE_LDT 2
+                #define SEG_TYPE_BUSY_TSS16 3
+
                 struct __attribute__ ((__packed__)) vmcb_seg {
                         uint16_t selector;
                         uint16_t attrib;

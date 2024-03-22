@@ -1,6 +1,7 @@
 #include <asm/io.h>
 #include <asm/msr.h>
 #include <asm/page_types.h>
+#include <asm-generic/bitops/instrumented-non-atomic.h>
 #include <linux/gfp.h>
 #include <linux/gfp_types.h>
 #include <linux/mm.h>
@@ -126,6 +127,75 @@ const struct file_operations yakvm_vcpu_fops = {
         .unlocked_ioctl = yakvm_vcpu_ioctl,
 };
 
+static inline void yakvm_vmcb_init_segment_register(
+        struct vmcb_seg *seg, uint16_t selector, uint16_t attrib,
+        uint32_t limit, uint64_t base)
+{
+	seg->selector = selector;
+	seg->attrib = attrib;
+	seg->limit = limit;
+	seg->base = base;
+}
+
+static inline void yakvm_vmcb_init_dt_register(struct vmcb_seg *seg,
+                                        uint32_t limit, uint64_t base)
+{
+        seg->limit = limit;
+        seg->base = base;
+}
+
+/*
+ * initialize the *vmcb* for guest state according to "15.5"
+ * on page 501 at
+ * https://www.amd.com/content/dam/amd/en/documents/processor-tech-docs/programmer-references/24593.pdf
+ */
+static void yakvm_vcpu_init_vmcb(struct vmcb *vmcb)
+{
+        /*
+         * initialize the guest to the initial processor state
+         * according to "14.1.3" on page 480 at
+         * https://www.amd.com/content/dam/amd/en/documents/processor-tech-docs/programmer-references/24593.pdf
+         */
+        yakvm_vmcb_init_segment_register(&vmcb->save.cs, 0xf000,
+                SVM_SELECTOR_P_MASK | SVM_SELECTOR_S_MASK |
+                SVM_SELECTOR_READ_MASK | SVM_SELECTOR_CODE_MASK,
+                0xffff, 0xffff0000);
+        yakvm_vmcb_init_segment_register(&vmcb->save.ds, 0,
+                SVM_SELECTOR_P_MASK | SVM_SELECTOR_S_MASK |
+                SVM_SELECTOR_READ_MASK | SVM_SELECTOR_WRITE_MASK,
+                0xffff, 0x0);
+        yakvm_vmcb_init_segment_register(&vmcb->save.es, 0,
+                SVM_SELECTOR_P_MASK | SVM_SELECTOR_S_MASK |
+                SVM_SELECTOR_READ_MASK | SVM_SELECTOR_WRITE_MASK,
+                0xffff, 0x0);
+        yakvm_vmcb_init_segment_register(&vmcb->save.fs, 0,
+                SVM_SELECTOR_P_MASK | SVM_SELECTOR_S_MASK |
+                SVM_SELECTOR_READ_MASK | SVM_SELECTOR_WRITE_MASK,
+                0xffff, 0x0);
+        yakvm_vmcb_init_segment_register(&vmcb->save.gs, 0,
+                SVM_SELECTOR_P_MASK | SVM_SELECTOR_S_MASK |
+                SVM_SELECTOR_READ_MASK | SVM_SELECTOR_WRITE_MASK,
+                0xffff, 0x0);
+        yakvm_vmcb_init_segment_register(&vmcb->save.ss, 0,
+                SVM_SELECTOR_P_MASK | SVM_SELECTOR_S_MASK |
+                SVM_SELECTOR_READ_MASK | SVM_SELECTOR_WRITE_MASK,
+                0xffff, 0x0);
+        yakvm_vmcb_init_segment_register(&vmcb->save.ss, 0,
+                SVM_SELECTOR_P_MASK | SVM_SELECTOR_S_MASK |
+                SVM_SELECTOR_READ_MASK | SVM_SELECTOR_WRITE_MASK,
+                0xffff, 0x0);
+        yakvm_vmcb_init_segment_register(&vmcb->save.ss, 0,
+                SVM_SELECTOR_P_MASK | SVM_SELECTOR_S_MASK |
+                SVM_SELECTOR_READ_MASK | SVM_SELECTOR_WRITE_MASK,
+                0xffff, 0x0);
+        yakvm_vmcb_init_dt_register(&vmcb->save.gdtr, 0xffff, 0);
+        yakvm_vmcb_init_dt_register(&vmcb->save.idtr, 0xffff, 0);
+        yakvm_vmcb_init_segment_register(&vmcb->save.ldtr, 0,
+                                        SEG_TYPE_LDT, 0xffff, 0x0);
+        yakvm_vmcb_init_segment_register(&vmcb->save.ldtr, 0,
+                                        SEG_TYPE_BUSY_TSS16, 0xffff, 0x0);
+}
+
 /* create the vcpu */
 struct vcpu* yakvm_create_vcpu(struct vm *vm)
 {
@@ -183,7 +253,14 @@ struct vcpu* yakvm_create_vcpu(struct vm *vm)
 
         /* initialize the vcpu */
         mutex_init(&vcpu->lock);
+        yakvm_vcpu_init_vmcb(gvmcb);
         vcpu->gvmcb = gvmcb;
+        /*
+         * kernel needs to initialize the *gvmcb* to setup the
+         * guest. However, it does not need to initialize the
+         * hvmcb* as it is only used to temporarily store the
+         * host state during guest execution.
+         */
         vcpu->hvmcb = hvmcb;
         vcpu->hsave = hsave;
         vcpu->vm = vm;
