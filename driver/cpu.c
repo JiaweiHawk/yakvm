@@ -27,7 +27,7 @@ static int yakvm_vcpu_release(struct inode *inode, struct file *filp)
  */
 static int yakvm_vcpu_handle_exit(struct vcpu *vcpu)
 {
-        uint32_t exit_code = vcpu->vmcb->control.exit_code;
+        uint32_t exit_code = vcpu->gvmcb->control.exit_code;
         assert(exit_code == SVM_EXIT_ERR);
         return exit_code;
 }
@@ -58,10 +58,33 @@ static int yakvm_vcpu_run(struct vcpu *vcpu)
          */
         wrmsrl(MSR_VM_HSAVE_PA, virt_to_phys(vcpu->hsave));
 
+        /*
+         * Considering that *vmrun* and *vmexit* only saves part or none
+         * of host state, kernel should also use *vmsave* and *vmload*
+         * to restore the totaly host state according to "15.5.1"
+         * on page 501 at
+         * https://www.amd.com/content/dam/amd/en/documents/processor-tech-docs/programmer-references/24593.pdf
+         */
         asm volatile (
+                "vmsave %0\n\t"
+                :
+                :"a"(virt_to_phys(vcpu->hvmcb))
+                :"memory"
+        );
+
+        asm volatile (
+                /* enter guest mode */
                 "vmrun %0\n\t"
                 :
-                :"a"(virt_to_phys(vcpu->vmcb))
+                :"a"(virt_to_phys(vcpu->gvmcb))
+                :"cc", "memory"
+        );
+
+        asm volatile (
+                "vmload %0\n\t"
+                :
+                :"a"(virt_to_phys(vcpu->hvmcb))
+                :"cc"
         );
 
         preempt_enable();
@@ -107,7 +130,7 @@ const struct file_operations yakvm_vcpu_fops = {
 struct vcpu* yakvm_create_vcpu(struct vm *vm)
 {
         struct vcpu *vcpu;
-        struct vmcb *vmcb;
+        struct vmcb *gvmcb, *hvmcb;
         void *hsave;
         void *ret;
 
@@ -120,39 +143,57 @@ struct vcpu* yakvm_create_vcpu(struct vm *vm)
 
         /*
          * Virtual Machine Control Block(vmcb) should be a
-         * 4KB-aligned page accroding to "15.5" on page 500 at
+         * 4KB-aligned page which describes a guest to be executed
+         * accroding to "15.5" on page 500 at
          * https://www.amd.com/content/dam/amd/en/documents/processor-tech-docs/programmer-references/24593.pdf
          */
-        vmcb = kmalloc(4096, GFP_KERNEL_ACCOUNT | __GFP_ZERO);
-        if (!vmcb) {
+        gvmcb = kmalloc(4096, GFP_KERNEL_ACCOUNT | __GFP_ZERO);
+        if (!gvmcb) {
                 log(LOG_ERR, "kmalloc() failed");
                 ret = ERR_PTR(-ENOMEM);
                 goto free_vcpu;
         }
 
         /*
-         * *hsave* is a 4KB block of memory where *vmrun* saves host state,
-         * and from which *vmexit* reloads host state according to "15.30.4"
-         * on page 585 at
+         * Considering that *vmrun* and *vmexit* only saves part or none
+         * of host state, kernel should also use *vmcb* with
+         * *vmsave* and *vmload* to restore the totaly host state
+         * according to "15.5.1" on page 501 at
+         * https://www.amd.com/content/dam/amd/en/documents/processor-tech-docs/programmer-references/24593.pdf
+         */
+        hvmcb = kmalloc(4096, GFP_KERNEL_ACCOUNT | __GFP_ZERO);
+        if (!hvmcb) {
+                log(LOG_ERR, "kmalloc() failed");
+                ret = ERR_PTR(-ENOMEM);
+                goto free_gvmcb;
+        }
+
+        /*
+         * *hsave* is a 4KB block of memory where *vmrun* saves part or
+         * none of host state, and from which *vmexit* reloads saving
+         * host state according to "15.30.4" on page 585 at
          * https://www.amd.com/content/dam/amd/en/documents/processor-tech-docs/programmer-references/24593.pdf
          */
         hsave = kmalloc(4096, GFP_KERNEL_ACCOUNT | __GFP_ZERO);
         if (!hsave) {
-                log(LOG_ERR, "alloc_page() failed");
+                log(LOG_ERR, "kmalloc() failed");
                 ret = ERR_PTR(-ENOMEM);
-                goto free_vmcb;
+                goto free_hvmcb;
         }
 
         /* initialize the vcpu */
         mutex_init(&vcpu->lock);
-        vcpu->vmcb = vmcb;
+        vcpu->gvmcb = gvmcb;
+        vcpu->hvmcb = hvmcb;
         vcpu->hsave = hsave;
         vcpu->vm = vm;
 
         return vcpu;
 
-free_vmcb:
-        kfree(vmcb);
+free_hvmcb:
+        kfree(hvmcb);
+free_gvmcb:
+        kfree(gvmcb);
 free_vcpu:
         kfree(vcpu);
 out:
@@ -162,7 +203,8 @@ out:
 /* destroy the vcpu */
 void yakvm_destroy_vcpu(struct vcpu *vcpu)
 {
-        kfree(vcpu->vmcb);
         kfree(vcpu->hsave);
+        kfree(vcpu->hvmcb);
+        kfree(vcpu->gvmcb);
         kfree(vcpu);
 }

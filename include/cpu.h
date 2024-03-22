@@ -243,7 +243,8 @@
                 /* virtual cpu data structure */
                 struct vcpu {
                         struct mutex lock;
-                        struct vmcb *vmcb;
+                        struct vmcb *gvmcb;
+                        struct vmcb *hvmcb;
                         void *hsave;
                         struct vm *vm;
                 };
