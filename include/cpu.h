@@ -202,6 +202,18 @@
                         uint64_t base;
                 };
 
+                /*
+                 * DR6_ACTIVE_LOW combines fixed-1 and active-low bits.
+                 * We can regard all the bits in DR6_FIXED_1 as active_low bits;
+                 * they will never be 0 for now, but when they are defined
+                 * in the future it will require no code change.
+                 *
+                 * DR6_ACTIVE_LOW is also used as the init/reset value for DR6.
+                 */
+                #define DR6_ACTIVE_LOW	0xffff0ff0
+
+                #define DR7_FIXED_1	0x00000400
+
                 /* Save area definition for legacy and SEV-MEM guests */
                 struct __attribute__ ((__packed__)) vmcb_save_area {
                         struct vmcb_seg es;

@@ -1,6 +1,7 @@
 #include <asm/io.h>
 #include <asm/msr.h>
 #include <asm/page_types.h>
+#include <asm/processor-flags.h>
 #include <asm-generic/bitops/instrumented-non-atomic.h>
 #include <linux/gfp.h>
 #include <linux/gfp_types.h>
@@ -145,8 +146,7 @@ static inline void yakvm_vmcb_init_dt_register(struct vmcb_seg *seg,
 }
 
 /*
- * initialize the *vmcb* for guest state according to "15.5"
- * on page 501 at
+ * initialize the *vmcb* for guest state according to "15.5" on page 501 at
  * https://www.amd.com/content/dam/amd/en/documents/processor-tech-docs/programmer-references/24593.pdf
  */
 static void yakvm_vcpu_init_vmcb(struct vmcb *vmcb)
@@ -156,6 +156,9 @@ static void yakvm_vcpu_init_vmcb(struct vmcb *vmcb)
          * according to "14.1.3" on page 480 at
          * https://www.amd.com/content/dam/amd/en/documents/processor-tech-docs/programmer-references/24593.pdf
          */
+        vmcb->save.cr0 = X86_CR0_NW | X86_CR0_CD | X86_CR0_ET;
+        vmcb->save.rflags = X86_EFLAGS_FIXED;
+        vmcb->save.rip = 0xfff0;
         yakvm_vmcb_init_segment_register(&vmcb->save.cs, 0xf000,
                 SVM_SELECTOR_P_MASK | SVM_SELECTOR_S_MASK |
                 SVM_SELECTOR_READ_MASK | SVM_SELECTOR_CODE_MASK,
@@ -194,6 +197,8 @@ static void yakvm_vcpu_init_vmcb(struct vmcb *vmcb)
                                         SEG_TYPE_LDT, 0xffff, 0x0);
         yakvm_vmcb_init_segment_register(&vmcb->save.ldtr, 0,
                                         SEG_TYPE_BUSY_TSS16, 0xffff, 0x0);
+        vmcb->save.dr6 = DR6_ACTIVE_LOW;
+        vmcb->save.dr7 = DR7_FIXED_1;
 }
 
 /* create the vcpu */
