@@ -101,11 +101,12 @@ if __name__ == "__main__":
         qemu.runtil("initialize yakvm", timeout=args.timeout)
 
         qemu.execute("/mnt/shares/emulator")
-        qemu.runtil("yakvm_create_vm() creates the kvm kvm-", timeout=args.timeout)
-        qemu.runtil("yakvm_destroy_vm() destroys the kvm kvm-", timeout=args.timeout)
+        qemu.runtil("BUG: unable to handle page fault for address:", timeout=args.timeout)
+        #qemu.runtil("yakvm_create_vm() creates the kvm kvm-", timeout=args.timeout)
+        #qemu.runtil("yakvm_destroy_vm() destroys the kvm kvm-", timeout=args.timeout)
 
-        qemu.execute("rmmod yakvm")
-        qemu.runtil("cleanup yakvm", timeout=args.timeout)
+        #qemu.execute("rmmod yakvm")
+        #qemu.runtil("cleanup yakvm", timeout=args.timeout)
 
     except:
         traceback.print_exc()

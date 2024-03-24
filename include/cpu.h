@@ -299,7 +299,10 @@
         /* ioctls for vcpu fds */
         #define YAKVM_RUN               _IO(YAKVMIO,   0x20)
 
-        /* *vmexit* exit code */
+        /*
+         * *vmexit* exit code according to "Appendix C" on page 745 at
+         * https://www.amd.com/content/dam/amd/en/documents/processor-tech-docs/programmer-references/24593.pdf
+         */
         #define SVM_EXIT_READ_CR0                       0x000
         #define SVM_EXIT_READ_CR2                       0x002
         #define SVM_EXIT_READ_CR3                       0x003
@@ -397,6 +400,6 @@
         #define SVM_EXIT_AVIC_INCOMPLETE_IPI            0x401
         #define SVM_EXIT_AVIC_UNACCELERATED_ACCESS      0x402
         #define SVM_EXIT_VMGEXIT                        0x403
-        #define SVM_EXIT_ERR                            -1
+        #define SVM_EXIT_INVALID                        -1
 
 #endif // __YAKVM_CPU_H_

@@ -3,15 +3,19 @@
 #include <asm/page_types.h>
 #include <asm/processor-flags.h>
 #include <asm-generic/bitops/instrumented-non-atomic.h>
+#include <linux/bitops.h>
 #include <linux/gfp.h>
 #include <linux/gfp_types.h>
 #include <linux/mm.h>
 #include <linux/mutex.h>
 #include <linux/preempt.h>
 #include <linux/slab.h>
+#include <linux/types.h>
 #include "../include/cpu.h"
 #include "../include/vm.h"
 #include "../include/yakvm.h"
+
+static atomic_t asid = ATOMIC_INIT(1);
 
 static int yakvm_vcpu_release(struct inode *inode, struct file *filp)
 {
@@ -30,7 +34,6 @@ static int yakvm_vcpu_release(struct inode *inode, struct file *filp)
 static int yakvm_vcpu_handle_exit(struct vcpu *vcpu)
 {
         uint32_t exit_code = vcpu->gvmcb->control.exit_code;
-        assert(exit_code == SVM_EXIT_ERR);
         return exit_code;
 }
 
@@ -145,6 +148,12 @@ static inline void yakvm_vmcb_init_dt_register(struct vmcb_seg *seg,
         seg->base = base;
 }
 
+static inline void yakvm_vmcb_set_intercept(struct vmcb *vmcb, u32 bit)
+{
+        assert(bit < 32 * MAX_INTERCEPT);
+        __set_bit(bit, (unsigned long *)&vmcb->control.intercepts);
+}
+
 /*
  * initialize the *vmcb* for guest state according to "15.5" on page 501 at
  * https://www.amd.com/content/dam/amd/en/documents/processor-tech-docs/programmer-references/24593.pdf
@@ -199,6 +208,25 @@ static void yakvm_vcpu_init_vmcb(struct vmcb *vmcb)
                                         SEG_TYPE_BUSY_TSS16, 0xffff, 0x0);
         vmcb->save.dr6 = DR6_ACTIVE_LOW;
         vmcb->save.dr7 = DR7_FIXED_1;
+
+        /*
+         * *vmrun* instruction performs consistency checks on guest state,
+         * illegal guest state cause a *vmexit* with error code
+         * *VMEXIT_INVALID* according to "15.5.1" on page 503
+         * https://www.amd.com/content/dam/amd/en/documents/processor-tech-docs/programmer-references/24593.pdf
+         */
+        vmcb->save.efer |= EFER_SVME;
+        yakvm_vmcb_set_intercept(vmcb, INTERCEPT_VMRUN);      /* current
+        implementation requires that the *vmrun* intercept always be set
+        in the *vmcb* according to "15.9" on page 514 at
+        https://www.amd.com/content/dam/amd/en/documents/processor-tech-docs/programmer-references/24593.pdf */
+        vmcb->control.asid = atomic_inc_return(&asid);          /* ensure
+        different guests can coexist in the TLB according to
+        "15.25.1" on page 548 at
+        https://www.amd.com/content/dam/amd/en/documents/processor-tech-docs/programmer-references/24593.pdf */
+        assert(vmcb->control.asid < cpuid_ebx(0x8000000a));    /* according
+        to "15.5.1" on page 503 at
+        https://www.amd.com/content/dam/amd/en/documents/processor-tech-docs/programmer-references/24593.pdf */
 }
 
 /* create the vcpu */
