@@ -212,11 +212,11 @@ static void yakvm_vcpu_init_vmcb(struct vmcb *vmcb)
                 0xffff, 0x0);
         yakvm_vmcb_init_descriptor_table_register(&vmcb->save.gdtr,
                                                   0xffff, 0);
-        yakvm_vmcb_init_descriptor_table_register(&vmcb->save.ldtr,
+        yakvm_vmcb_init_descriptor_table_register(&vmcb->save.idtr,
                                                   0xffff, 0);
         yakvm_vmcb_init_segment_register(&vmcb->save.ldtr, 0,
                                         SEG_TYPE_LDT, 0xffff, 0x0);
-        yakvm_vmcb_init_segment_register(&vmcb->save.ldtr, 0,
+        yakvm_vmcb_init_segment_register(&vmcb->save.tr, 0,
                                         SEG_TYPE_BUSY_TSS16, 0xffff, 0x0);
         vmcb->save.dr6 = DR6_ACTIVE_LOW;
         vmcb->save.dr7 = DR7_FIXED_1;
