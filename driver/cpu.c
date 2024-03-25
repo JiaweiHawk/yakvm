@@ -64,6 +64,16 @@ static int yakvm_vcpu_run(struct vcpu *vcpu)
         wrmsrl(MSR_VM_HSAVE_PA, virt_to_phys(vcpu->hsave));
 
         /*
+         * It is assumed that kernel cleared *gif* some time before
+         * executing the *vmrun* instruction to ensure an atomic
+         * state switch according to "15.5.1" on page 502 at
+         * https://www.amd.com/content/dam/amd/en/documents/processor-tech-docs/programmer-references/24593.pdf.
+         */
+        asm volatile (
+                "clgi\n\t"
+        );
+
+        /*
          * Considering that *vmrun* and *vmexit* only saves part or none
          * of host state, kernel should also use *vmsave* and *vmload*
          * to restore the totaly host state according to "15.5.1"
@@ -79,7 +89,9 @@ static int yakvm_vcpu_run(struct vcpu *vcpu)
 
         asm volatile (
                 /* enter guest mode */
+                "vmload %0\n\t"
                 "vmrun %0\n\t"
+                "vmsave %0\n\t"
                 :
                 :"a"(virt_to_phys(vcpu->gvmcb))
                 :"cc", "memory"
@@ -90,6 +102,10 @@ static int yakvm_vcpu_run(struct vcpu *vcpu)
                 :
                 :"a"(virt_to_phys(vcpu->hvmcb))
                 :"cc"
+        );
+
+        asm volatile (
+                "stgi\n\t"
         );
 
         preempt_enable();
