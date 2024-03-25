@@ -210,14 +210,6 @@ static void yakvm_vcpu_init_vmcb(struct vmcb *vmcb)
                 SVM_SELECTOR_P_MASK | SVM_SELECTOR_S_MASK |
                 SVM_SELECTOR_READ_MASK | SVM_SELECTOR_WRITE_MASK,
                 0xffff, 0x0);
-        yakvm_vmcb_init_segment_register(&vmcb->save.ss, 0,
-                SVM_SELECTOR_P_MASK | SVM_SELECTOR_S_MASK |
-                SVM_SELECTOR_READ_MASK | SVM_SELECTOR_WRITE_MASK,
-                0xffff, 0x0);
-        yakvm_vmcb_init_segment_register(&vmcb->save.ss, 0,
-                SVM_SELECTOR_P_MASK | SVM_SELECTOR_S_MASK |
-                SVM_SELECTOR_READ_MASK | SVM_SELECTOR_WRITE_MASK,
-                0xffff, 0x0);
         yakvm_vmcb_init_descriptor_table_register(&vmcb->save.gdtr,
                                                   0xffff, 0);
         yakvm_vmcb_init_descriptor_table_register(&vmcb->save.ldtr,
