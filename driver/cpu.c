@@ -165,7 +165,8 @@ static inline void yakvm_vmcb_init_descriptor_table_register(
         seg->base = base;
 }
 
-static inline void yakvm_vmcb_set_intercept(struct vmcb *vmcb, u32 bit)
+static inline void yakvm_vmcb_set_intercept(struct vmcb *vmcb,
+                                            uint32_t bit)
 {
         assert(bit < 32 * MAX_INTERCEPT);
         __set_bit(bit, (unsigned long *)&vmcb->control.intercepts);
