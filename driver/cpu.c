@@ -34,7 +34,8 @@ static int yakvm_vcpu_release(struct inode *inode, struct file *filp)
 static int yakvm_vcpu_handle_exit(struct vcpu *vcpu)
 {
         uint32_t exit_code = vcpu->gvmcb->control.exit_code;
-        return exit_code;
+        assert(exit_code == SVM_EXIT_EXCP_BASE + PF_VECTOR);
+        return -exit_code;
 }
 
 /*
@@ -172,6 +173,12 @@ static inline void yakvm_vmcb_set_intercept(struct vmcb *vmcb,
         __set_bit(bit, (unsigned long *)&vmcb->control.intercepts);
 }
 
+static inline void yakvm_vmcb_set_exception_intercept(struct vmcb *vmcb,
+                                            uint32_t bit)
+{
+        yakvm_vmcb_set_intercept(vmcb, INTERCEPT_EXCEPTION_OFFSET + bit);
+}
+
 /*
  * initialize the *vmcb* for guest state according to "15.5" on page 501 at
  * https://www.amd.com/content/dam/amd/en/documents/processor-tech-docs/programmer-references/24593.pdf
@@ -184,6 +191,10 @@ static void yakvm_vcpu_init_vmcb(struct vmcb *vmcb)
          * https://www.amd.com/content/dam/amd/en/documents/processor-tech-docs/programmer-references/24593.pdf
          */
         vmcb->save.cr0 = X86_CR0_NW | X86_CR0_CD | X86_CR0_ET;
+        vmcb->save.cr0 |= X86_CR0_PG;   /* To facilitate virtualization
+        of real mode, the *vmrun* may legally load a guest CR0
+        value with PE=0 but PG=1 according to "15.19" on page 530 at
+        https://www.amd.com/content/dam/amd/en/documents/processor-tech-docs/programmer-references/24593.pdf*/
         vmcb->save.rflags = X86_EFLAGS_FIXED;
         vmcb->save.rip = 0xfff0;
         yakvm_vmcb_init_segment_register(&vmcb->save.cs, 0xf000,
@@ -220,6 +231,15 @@ static void yakvm_vcpu_init_vmcb(struct vmcb *vmcb)
                                         SEG_TYPE_BUSY_TSS16, 0xffff, 0x0);
         vmcb->save.dr6 = DR6_ACTIVE_LOW;
         vmcb->save.dr7 = DR7_FIXED_1;
+
+        /*
+         * various instructions and events in the guest can be intercepted
+         * by means of control bits in the *vmcb*. When an intercept is
+         * triggered, the processor performs a *vmexit* to notify the
+         * software according to "15.7" on page 507 at
+         * https://www.amd.com/content/dam/amd/en/documents/processor-tech-docs/programmer-references/24593.pdf
+         */
+        yakvm_vmcb_set_exception_intercept(vmcb, PF_VECTOR);
 
         /*
          * *vmrun* instruction performs consistency checks on guest state,

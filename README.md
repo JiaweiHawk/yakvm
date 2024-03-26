@@ -61,3 +61,4 @@ kernel space           │            │   │   │         │  │   │
 - [david942j/kvm-kernel-example](https://github.com/david942j/kvm-kernel-example)
 - [yifengyou/learn-kvm](https://github.com/yifengyou/learn-kvm/blob/master/docs/虚拟化实现技术/虚拟化实现技术.md#amd虚拟化)
 - [eliaskousk/vmrun](https://github.com/eliaskousk/vmrun/tree/dev)
+- [Martin Radev/mini-svm](http://varko.xyz/mini-svm-chapter-1.html)
