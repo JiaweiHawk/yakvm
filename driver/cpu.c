@@ -34,8 +34,23 @@ static int yakvm_vcpu_release(struct inode *inode, struct file *filp)
 static int yakvm_vcpu_handle_exit(struct vcpu *vcpu)
 {
         uint32_t exit_code = vcpu->gvmcb->control.exit_code;
-        assert(exit_code == SVM_EXIT_EXCP_BASE + PF_VECTOR);
-        return -exit_code;
+        int r = 0;
+
+        switch (exit_code) {
+                case SVM_EXIT_EXCP_BASE ... SVM_EXIT_LAST_EXCP:
+                        vcpu->state->exitcode = exit_code
+                                - SVM_EXIT_EXCP_BASE
+                                + YAKVM_VCPU_EXITCODE_EXCEPTION_BASE;
+                        break;
+                default:
+                        log(LOG_ERR, "yakvm_vcpu_handle_exit() get unknown "
+                            "exit_code %d", exit_code);
+                        r = -EINVAL;
+                        goto out;
+        }
+
+out:
+        return r;
 }
 
 /*
@@ -139,6 +154,37 @@ static long yakvm_vcpu_ioctl(struct file *filp, unsigned int ioctl,
         return r;
 }
 
+/* share the vcpu state with kernel and userspace */
+static int yakvm_vcpu_state_mmap(struct file *filp,
+                                 struct vm_area_struct *vma)
+{
+        int r;
+        struct vcpu *vcpu = filp->private_data;
+
+        if (vma->vm_pgoff) {
+                log(LOG_ERR, "yakvm_vcpu_state_mmap() map at %ld "
+                    "instead of 0", vma->vm_pgoff);
+                return -EINVAL;
+        }
+
+	if (vma->vm_end - vma->vm_start != PAGE_SIZE) {
+                log(LOG_ERR, "yakvm_vcpu_state_mmap() map %ld bytes "
+                    "instead of page size", vma->vm_end - vma->vm_start);
+                return -EINVAL;
+        }
+
+        r = remap_pfn_range(vma, vma->vm_start,
+                            virt_to_phys(vcpu->state) >> PAGE_SHIFT,
+                            PAGE_SIZE, vma->vm_page_prot);
+        if (r < 0) {
+                log(LOG_ERR, "remap_pfn_range() failed with error code %d",
+                    r);
+                return r;
+        }
+
+        return 0;
+}
+
 /*
  * interface for userspace-vcpu interaction, describe how the
  * userspace emulator can manipulate the virtual cpu
@@ -146,6 +192,7 @@ static long yakvm_vcpu_ioctl(struct file *filp, unsigned int ioctl,
 const struct file_operations yakvm_vcpu_fops = {
         .release = yakvm_vcpu_release,
         .unlocked_ioctl = yakvm_vcpu_ioctl,
+        .mmap = yakvm_vcpu_state_mmap,
 };
 
 static inline void yakvm_vmcb_init_segment_register(
@@ -264,6 +311,7 @@ static void yakvm_vcpu_init_vmcb(struct vmcb *vmcb)
 /* create the vcpu */
 struct vcpu* yakvm_create_vcpu(struct vm *vm)
 {
+        struct page *state;
         struct vcpu *vcpu;
         struct vmcb *gvmcb, *hvmcb;
         void *hsave;
@@ -316,6 +364,13 @@ struct vcpu* yakvm_create_vcpu(struct vm *vm)
                 goto free_hvmcb;
         }
 
+	state = alloc_page(GFP_KERNEL_ACCOUNT | __GFP_ZERO);
+        if (!state) {
+                log(LOG_ERR, "alloc_page() failed");
+                ret = ERR_PTR(-ENOMEM);
+                goto free_hsave;
+        }
+
         /* initialize the vcpu */
         mutex_init(&vcpu->lock);
         yakvm_vcpu_init_vmcb(gvmcb);
@@ -328,10 +383,13 @@ struct vcpu* yakvm_create_vcpu(struct vm *vm)
          */
         vcpu->hvmcb = hvmcb;
         vcpu->hsave = hsave;
+        vcpu->state = page_address(state);
         vcpu->vm = vm;
 
         return vcpu;
 
+free_hsave:
+        kfree(hsave);
 free_hvmcb:
         kfree(hvmcb);
 free_gvmcb:
@@ -345,6 +403,7 @@ out:
 /* destroy the vcpu */
 void yakvm_destroy_vcpu(struct vcpu *vcpu)
 {
+        free_page((unsigned long)vcpu->state);
         kfree(vcpu->hsave);
         kfree(vcpu->hvmcb);
         kfree(vcpu->gvmcb);

@@ -2,6 +2,43 @@
 
         #define __YAKVM_CPU_H_
 
+
+        /* for userspace and kernel to share vcpu state data */
+        #ifndef __KERNEL__
+                #include <stdint.h>
+        #endif // __KERNEL__
+        enum YAKVM_VCPU_EXITCODE {
+                YAKVM_VCPU_EXITCODE_NULL = 0,
+                YAKVM_VCPU_EXITCODE_EXCEPTION_DE = 0x40,
+                YAKVM_VCPU_EXITCODE_EXCEPTION_DB,
+                YAKVM_VCPU_EXITCODE_EXCEPTION_V2,
+                YAKVM_VCPU_EXITCODE_EXCEPTION_BP,
+                YAKVM_VCPU_EXITCODE_EXCEPTION_OF,
+                YAKVM_VCPU_EXITCODE_EXCEPTION_BR,
+                YAKVM_VCPU_EXITCODE_EXCEPTION_UD,
+                YAKVM_VCPU_EXITCODE_EXCEPTION_NM,
+                YAKVM_VCPU_EXITCODE_EXCEPTION_DF,
+                YAKVM_VCPU_EXITCODE_EXCEPTION_v9,
+                YAKVM_VCPU_EXITCODE_EXCEPTION_TS,
+                YAKVM_VCPU_EXITCODE_EXCEPTION_NP,
+                YAKVM_VCPU_EXITCODE_EXCEPTION_SS,
+                YAKVM_VCPU_EXITCODE_EXCEPTION_GP,
+                YAKVM_VCPU_EXITCODE_EXCEPTION_PF,
+                YAKVM_VCPU_EXITCODE_EXCEPTION_MF,
+                YAKVM_VCPU_EXITCODE_EXCEPTION_AC,
+                YAKVM_VCPU_EXITCODE_EXCEPTION_MC,
+                YAKVM_VCPU_EXITCODE_EXCEPTION_XM,
+                YAKVM_VCPU_EXITCODE_EXCEPTION_VE,
+        };
+        #define YAKVM_VCPU_EXITCODE_EXCEPTION_BASE \
+                YAKVM_VCPU_EXITCODE_EXCEPTION_DE
+
+        struct vcpu_state {
+                /* from kernel to userspace */
+                enum YAKVM_VCPU_EXITCODE exitcode;              // vcpu exitcode
+        };
+
+
         #ifdef __KERNEL__
 
                 /*
@@ -300,6 +337,7 @@
                         struct vmcb *gvmcb;
                         struct vmcb *hvmcb;
                         void *hsave;
+                        struct vcpu_state *state;
                         struct vm *vm;
                 };
 

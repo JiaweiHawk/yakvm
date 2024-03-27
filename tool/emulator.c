@@ -2,6 +2,7 @@
 #include <fcntl.h>
 #include <string.h>
 #include <sys/ioctl.h>
+#include <sys/mman.h>
 #include <unistd.h>
 #include "../include/cpu.h"
 #include "../include/vm.h"
@@ -10,6 +11,7 @@
 int main(int argc, char *argv[])
 {
         int yakvmfd, vmfd, cpufd, ret;
+        struct vcpu_state *vcpu_state;
 
         yakvmfd = open("/dev/yakvm", O_RDWR | O_CLOEXEC);
         if (yakvmfd < 0) {
@@ -36,8 +38,20 @@ int main(int argc, char *argv[])
 
         assert((ioctl(vmfd, YAKVM_CREATE_VCPU) == -1) && (errno == EEXIST));
 
-        assert(ioctl(cpufd, YAKVM_RUN) == -1);
+        vcpu_state = mmap(NULL, getpagesize(), PROT_READ | PROT_WRITE,
+                          MAP_SHARED, cpufd, 0);
+        if (vcpu_state == MAP_FAILED) {
+                ret = errno;
+                log(LOG_ERR, "mmap() failed with error %s",
+                    strerror(errno));
+                goto close_cpufd;
+        }
 
+        assert(vcpu_state->exitcode == YAKVM_VCPU_EXITCODE_NULL);
+        assert(ioctl(cpufd, YAKVM_RUN) == 0);
+        assert(vcpu_state->exitcode == YAKVM_VCPU_EXITCODE_EXCEPTION_PF);
+
+close_cpufd:
         close(cpufd);
 close_vmfd:
         close(vmfd);
