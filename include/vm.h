@@ -12,6 +12,7 @@
                         struct mutex lock;
                         atomic_t refcount;
                         struct vcpu *vcpu;
+                        struct vmm *vmm;
                         char id[YAKVM_VM_MAX_ID];
                 };
 

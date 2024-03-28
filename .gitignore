@@ -19,6 +19,7 @@
 !include
 include/*
 !include/cpu.h
+!include/memory.h
 !include/vm.h
 !include/yakvm.h
 
@@ -28,6 +29,7 @@ driver/*
 !driver/Kbuild
 !driver/cpu.c
 !driver/main.c
+!driver/memory.c
 !driver/vm.c
 !driver/Makefile
 

@@ -176,6 +176,8 @@
                 #define XM_VECTOR 19
                 #define VE_VECTOR 20
 
+                #define SVM_NESTED_CTL_NP_ENABLE	BIT(0)
+
                 struct __attribute__ ((__packed__)) vmcb_control_area {
                         uint32_t intercepts[MAX_INTERCEPT];
                         uint32_t reserved_1[15 - MAX_INTERCEPT];

@@ -6,8 +6,9 @@
 #include <linux/mutex.h>
 #include <linux/sched.h>
 #include <linux/slab.h>
-#include "../include/vm.h"
 #include "../include/cpu.h"
+#include "../include/memory.h"
+#include "../include/vm.h"
 #include "../include/yakvm.h"
 
 /* get the vm */
@@ -20,6 +21,7 @@ static void yakvm_get_vm(struct vm *vm)
 void yakvm_destroy_vm(struct vm *vm)
 {
         log(LOG_INFO, "yakvm_destroy_vm() destroys the kvm %s", vm->id);
+        yakvm_destroy_vmm(vm->vmm);
         if (vm->vcpu) {
                 yakvm_destroy_vcpu(vm->vcpu);
         }
@@ -127,18 +129,36 @@ const struct file_operations yakvm_vm_fops = {
 /* create the vm */
 struct vm * yakvm_create_vm(void)
 {
-        struct vm *vm
-            = kmalloc(sizeof (struct vm), GFP_KERNEL_ACCOUNT | __GFP_ZERO);
+        struct vm *vm;
+        struct vmm *vmm;
+        int r;
+
+        vm = kmalloc(sizeof(struct vm), GFP_KERNEL_ACCOUNT | __GFP_ZERO);
         if (!vm) {
                 log(LOG_ERR, "kmalloc() failed");
-                return ERR_PTR (-ENOMEM);
+                r = -ENOMEM;
+                goto out;
+        }
+
+        vmm = yakvm_create_vmm(vm);
+        if (IS_ERR(vmm)) {
+                r = PTR_ERR(vmm);
+                log(LOG_ERR, "yakvm_create_vmm() failed with error code "
+                    "%d", r);
+                goto free_vm;
         }
 
         /* initialize the *vm* */
         mutex_init(&vm->lock);
         atomic_set(&vm->refcount, 1);
         snprintf(vm->id, sizeof(vm->id), "kvm-%d", task_pid_nr(current));
+        vm->vmm = vmm;
 
         log(LOG_INFO, "yakvm_create_vm() creates the kvm %s", vm->id);
         return vm;
+
+free_vm:
+        kfree(vm);
+out:
+        return ERR_PTR(r);
 }

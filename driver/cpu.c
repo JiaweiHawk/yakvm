@@ -2,7 +2,6 @@
 #include <asm/msr.h>
 #include <asm/page_types.h>
 #include <asm/processor-flags.h>
-#include <asm-generic/bitops/instrumented-non-atomic.h>
 #include <linux/bitops.h>
 #include <linux/gfp.h>
 #include <linux/gfp_types.h>
@@ -12,6 +11,7 @@
 #include <linux/slab.h>
 #include <linux/types.h>
 #include "../include/cpu.h"
+#include "../include/memory.h"
 #include "../include/vm.h"
 #include "../include/yakvm.h"
 
@@ -41,6 +41,9 @@ static int yakvm_vcpu_handle_exit(struct vcpu *vcpu)
                         vcpu->state->exitcode = exit_code
                                 - SVM_EXIT_EXCP_BASE
                                 + YAKVM_VCPU_EXITCODE_EXCEPTION_BASE;
+                        break;
+                case SVM_EXIT_NPF:
+                        vcpu->state->exitcode = YAKVM_VCPU_EXITCODE_EXCEPTION_PF;
                         break;
                 default:
                         log(LOG_ERR, "yakvm_vcpu_handle_exit() get unknown "
@@ -230,8 +233,16 @@ static inline void yakvm_vmcb_set_exception_intercept(struct vmcb *vmcb,
  * initialize the *vmcb* for guest state according to "15.5" on page 501 at
  * https://www.amd.com/content/dam/amd/en/documents/processor-tech-docs/programmer-references/24593.pdf
  */
-static void yakvm_vcpu_init_vmcb(struct vmcb *vmcb)
+static void yakvm_vcpu_init_vmcb(struct vcpu *vcpu)
 {
+        /*
+         * kernel needs to initialize the *gvmcb* to setup the
+         * guest. However, it does not need to initialize the
+         * hvmcb* as it is only used to temporarily store the
+         * host state during guest execution.
+         */
+        struct vmcb *vmcb = vcpu->gvmcb;
+
         /*
          * initialize the guest to the initial processor state
          * according to "14.1.3" on page 480 at
@@ -287,6 +298,19 @@ static void yakvm_vcpu_init_vmcb(struct vmcb *vmcb)
          * https://www.amd.com/content/dam/amd/en/documents/processor-tech-docs/programmer-references/24593.pdf
          */
         yakvm_vmcb_set_exception_intercept(vmcb, PF_VECTOR);
+
+        /*
+         * with Nested Paging Table(NPT) enabled, the nested page table,
+         * residing in system physical memory and pointed to by nCR3,
+         * mapping guest physical addresses to system physical addresses
+         * according to "15.25.1" on page 547 at
+         * https://www.amd.com/content/dam/amd/en/documents/processor-tech-docs/programmer-references/24593.pdf
+         *
+         * Enable npt according to "15.25.3" on page 549 at
+         * https://www.amd.com/content/dam/amd/en/documents/processor-tech-docs/programmer-references/24593.pdf
+         */
+        vmcb->control.nested_ctl |= SVM_NESTED_CTL_NP_ENABLE;
+        vmcb->control.nested_cr3 = vcpu->vm->vmm->ncr3;
 
         /*
          * *vmrun* instruction performs consistency checks on guest state,
@@ -371,18 +395,12 @@ struct vcpu* yakvm_create_vcpu(struct vm *vm)
 
         /* initialize the vcpu */
         mutex_init(&vcpu->lock);
-        yakvm_vcpu_init_vmcb(page_address(gvmcb));
         vcpu->gvmcb = page_address(gvmcb);
-        /*
-         * kernel needs to initialize the *gvmcb* to setup the
-         * guest. However, it does not need to initialize the
-         * hvmcb* as it is only used to temporarily store the
-         * host state during guest execution.
-         */
         vcpu->hvmcb = page_address(hvmcb);
         vcpu->hsave = page_address(hsave);
         vcpu->state = page_address(state);
         vcpu->vm = vm;
+        yakvm_vcpu_init_vmcb(vcpu);
 
         return vcpu;
 
