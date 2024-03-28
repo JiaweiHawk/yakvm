@@ -327,7 +327,10 @@
                         struct vmcb_control_area control;
                         struct vmcb_save_area save;
                 };
-                static_assert(sizeof(struct vmcb) <= 4096);
+
+                #include <asm/page_types.h>
+                static_assert(PAGE_SIZE == 4096);
+                static_assert(sizeof(struct vmcb) <= PAGE_SIZE);
 
                 #include <linux/mutex.h>
                 #include "vm.h"

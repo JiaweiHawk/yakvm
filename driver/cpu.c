@@ -311,10 +311,8 @@ static void yakvm_vcpu_init_vmcb(struct vmcb *vmcb)
 /* create the vcpu */
 struct vcpu* yakvm_create_vcpu(struct vm *vm)
 {
-        struct page *state;
+        struct page *state, *gvmcb, *hvmcb, *hsave;
         struct vcpu *vcpu;
-        struct vmcb *gvmcb, *hvmcb;
-        void *hsave;
         void *ret;
 
         vcpu = kmalloc(sizeof(struct vcpu), GFP_KERNEL_ACCOUNT | __GFP_ZERO);
@@ -330,9 +328,9 @@ struct vcpu* yakvm_create_vcpu(struct vm *vm)
          * accroding to "15.5" on page 500 at
          * https://www.amd.com/content/dam/amd/en/documents/processor-tech-docs/programmer-references/24593.pdf
          */
-        gvmcb = kmalloc(4096, GFP_KERNEL_ACCOUNT | __GFP_ZERO);
+        gvmcb = alloc_page(GFP_KERNEL_ACCOUNT | __GFP_ZERO);
         if (!gvmcb) {
-                log(LOG_ERR, "kmalloc() failed");
+                log(LOG_ERR, "alloc_page() failed");
                 ret = ERR_PTR(-ENOMEM);
                 goto free_vcpu;
         }
@@ -344,9 +342,9 @@ struct vcpu* yakvm_create_vcpu(struct vm *vm)
          * according to "15.5.1" on page 501 at
          * https://www.amd.com/content/dam/amd/en/documents/processor-tech-docs/programmer-references/24593.pdf
          */
-        hvmcb = kmalloc(4096, GFP_KERNEL_ACCOUNT | __GFP_ZERO);
+        hvmcb = alloc_page(GFP_KERNEL_ACCOUNT | __GFP_ZERO);
         if (!hvmcb) {
-                log(LOG_ERR, "kmalloc() failed");
+                log(LOG_ERR, "alloc_page() failed");
                 ret = ERR_PTR(-ENOMEM);
                 goto free_gvmcb;
         }
@@ -357,9 +355,9 @@ struct vcpu* yakvm_create_vcpu(struct vm *vm)
          * host state according to "15.30.4" on page 585 at
          * https://www.amd.com/content/dam/amd/en/documents/processor-tech-docs/programmer-references/24593.pdf
          */
-        hsave = kmalloc(4096, GFP_KERNEL_ACCOUNT | __GFP_ZERO);
+        hsave = alloc_page(GFP_KERNEL_ACCOUNT | __GFP_ZERO);
         if (!hsave) {
-                log(LOG_ERR, "kmalloc() failed");
+                log(LOG_ERR, "alloc_page() failed");
                 ret = ERR_PTR(-ENOMEM);
                 goto free_hvmcb;
         }
@@ -373,27 +371,27 @@ struct vcpu* yakvm_create_vcpu(struct vm *vm)
 
         /* initialize the vcpu */
         mutex_init(&vcpu->lock);
-        yakvm_vcpu_init_vmcb(gvmcb);
-        vcpu->gvmcb = gvmcb;
+        yakvm_vcpu_init_vmcb(page_address(gvmcb));
+        vcpu->gvmcb = page_address(gvmcb);
         /*
          * kernel needs to initialize the *gvmcb* to setup the
          * guest. However, it does not need to initialize the
          * hvmcb* as it is only used to temporarily store the
          * host state during guest execution.
          */
-        vcpu->hvmcb = hvmcb;
-        vcpu->hsave = hsave;
+        vcpu->hvmcb = page_address(hvmcb);
+        vcpu->hsave = page_address(hsave);
         vcpu->state = page_address(state);
         vcpu->vm = vm;
 
         return vcpu;
 
 free_hsave:
-        kfree(hsave);
+        __free_page(hsave);
 free_hvmcb:
-        kfree(hvmcb);
+        __free_page(hvmcb);
 free_gvmcb:
-        kfree(gvmcb);
+        __free_page(gvmcb);
 free_vcpu:
         kfree(vcpu);
 out:
@@ -404,8 +402,8 @@ out:
 void yakvm_destroy_vcpu(struct vcpu *vcpu)
 {
         free_page((unsigned long)vcpu->state);
-        kfree(vcpu->hsave);
-        kfree(vcpu->hvmcb);
-        kfree(vcpu->gvmcb);
+        free_page((unsigned long)vcpu->hsave);
+        free_page((unsigned long)vcpu->hvmcb);
+        free_page((unsigned long)vcpu->gvmcb);
         kfree(vcpu);
 }
