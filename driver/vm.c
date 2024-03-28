@@ -20,7 +20,9 @@ static void yakvm_get_vm(struct vm *vm)
 void yakvm_destroy_vm(struct vm *vm)
 {
         log(LOG_INFO, "yakvm_destroy_vm() destroys the kvm %s", vm->id);
-        yakvm_destroy_vcpu(vm->vcpu);
+        if (vm->vcpu) {
+                yakvm_destroy_vcpu(vm->vcpu);
+        }
         kfree(vm);
 }
 
