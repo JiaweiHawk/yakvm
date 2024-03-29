@@ -3,6 +3,7 @@
 #include <linux/err.h>
 #include <linux/fdtable.h>
 #include <linux/gfp_types.h>
+#include <linux/mm.h>
 #include <linux/mutex.h>
 #include <linux/sched.h>
 #include <linux/slab.h>
@@ -117,6 +118,24 @@ static long yakvm_vm_ioctl(struct file *filp, unsigned int ioctl, unsigned long 
         return 0;
 }
 
+/* map the vm physical memory to host physical memory */
+static vm_fault_t yakvm_vm_vmm_fault(struct vm_fault *vmf)
+{
+        return 0;
+}
+
+static const struct vm_operations_struct yakvm_vm_vmm_ops = {
+        .fault = yakvm_vm_vmm_fault,
+};
+
+/* expose vm physical memory to userspace */
+static int yakvm_vm_mmap(struct file *filp,
+                         struct vm_area_struct *vma)
+{
+        vma->vm_ops = &yakvm_vm_vmm_ops;
+        return 0;
+}
+
 /*
  * interface for userspace-kvm interaction, describe how the
  * userspace emulator can manipulate the virtual machine
@@ -124,6 +143,7 @@ static long yakvm_vm_ioctl(struct file *filp, unsigned int ioctl, unsigned long 
 const struct file_operations yakvm_vm_fops = {
         .release = yakvm_vm_release,
         .unlocked_ioctl = yakvm_vm_ioctl,
+        .mmap = yakvm_vm_mmap,
 };
 
 /* create the vm */

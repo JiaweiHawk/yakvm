@@ -4,14 +4,15 @@
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <unistd.h>
-#include "../include/cpu.h"
+#include "emulator.h"
+#include "../include/memory.h"
 #include "../include/vm.h"
 #include "../include/yakvm.h"
 
 int main(int argc, char *argv[])
 {
-        int yakvmfd, vmfd, cpufd, ret;
-        struct vcpu_state *vcpu_state;
+        struct vm vm;
+        int yakvmfd, ret;
 
         yakvmfd = open("/dev/yakvm", O_RDWR | O_CLOEXEC);
         if (yakvmfd < 0) {
@@ -20,41 +21,49 @@ int main(int argc, char *argv[])
                     strerror(errno));
         }
 
-        vmfd = ioctl(yakvmfd, YAKVM_CREATE_VM);
-        if (vmfd < 0) {
+        vm.vmfd = ioctl(yakvmfd, YAKVM_CREATE_VM);
+        if (vm.vmfd < 0) {
                 ret = errno;
                 log(LOG_ERR, "ioctl(YAKVM_CREATE_VM) failed with error %s",
                     strerror(errno));
                 goto close_yakvmfd;
         }
+        vm.memory = mmap(NULL, YAKVM_MEMORY, PROT_READ | PROT_WRITE,
+                         MAP_SHARED, vm.vmfd, 0);
+        if (vm.memory == MAP_FAILED) {
+                ret = errno;
+                log(LOG_ERR, "mmap() failed with error %s",
+                    strerror(errno));
+                goto close_vmfd;
+        }
 
-        cpufd = ioctl(vmfd, YAKVM_CREATE_VCPU);
-        if (cpufd < 0) {
+        vm.cpufd = ioctl(vm.vmfd, YAKVM_CREATE_VCPU);
+        if (vm.cpufd < 0) {
                 ret = errno;
                 log(LOG_ERR, "ioctl(YAKVM_CREATE_VCPU) failed with error %s",
                     strerror(errno));
                 goto close_vmfd;
         }
 
-        assert((ioctl(vmfd, YAKVM_CREATE_VCPU) == -1) && (errno == EEXIST));
+        assert((ioctl(vm.vmfd, YAKVM_CREATE_VCPU) == -1) && (errno == EEXIST));
 
-        vcpu_state = mmap(NULL, getpagesize(), PROT_READ | PROT_WRITE,
-                          MAP_SHARED, cpufd, 0);
-        if (vcpu_state == MAP_FAILED) {
+        vm.cpu_state = mmap(NULL, getpagesize(), PROT_READ | PROT_WRITE,
+                             MAP_SHARED, vm.cpufd, 0);
+        if (vm.cpu_state == MAP_FAILED) {
                 ret = errno;
                 log(LOG_ERR, "mmap() failed with error %s",
                     strerror(errno));
                 goto close_cpufd;
         }
 
-        assert(vcpu_state->exitcode == YAKVM_VCPU_EXITCODE_NULL);
-        assert(ioctl(cpufd, YAKVM_RUN) == 0);
-        assert(vcpu_state->exitcode == YAKVM_VCPU_EXITCODE_EXCEPTION_PF);
+        assert(vm.cpu_state->exitcode == YAKVM_VCPU_EXITCODE_NULL);
+        assert(ioctl(vm.cpufd, YAKVM_RUN) == 0);
+        assert(vm.cpu_state->exitcode == YAKVM_VCPU_EXITCODE_EXCEPTION_PF);
 
 close_cpufd:
-        close(cpufd);
+        close(vm.cpufd);
 close_vmfd:
-        close(vmfd);
+        close(vm.vmfd);
 close_yakvmfd:
         close(yakvmfd);
 

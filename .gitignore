@@ -37,3 +37,4 @@ driver/*
 !tool
 tool/*
 !tool/emulator.c
+!tool/emulator.h
