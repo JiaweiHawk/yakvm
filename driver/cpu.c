@@ -25,6 +25,11 @@ static int yakvm_vcpu_release(struct inode *inode, struct file *filp)
         return 0;
 }
 
+static void yakvm_vcpu_handle_npf(struct vcpu *vcpu)
+{
+        vcpu->state->exitcode = YAKVM_VCPU_EXITCODE_EXCEPTION_PF;
+}
+
 /*
  * When the *vmrun* instruction exits(back to the host), an
  * exit/reason code is stored in the *EXITCODE* field in the
@@ -43,7 +48,7 @@ static int yakvm_vcpu_handle_exit(struct vcpu *vcpu)
                                 + YAKVM_VCPU_EXITCODE_EXCEPTION_BASE;
                         break;
                 case SVM_EXIT_NPF:
-                        vcpu->state->exitcode = YAKVM_VCPU_EXITCODE_EXCEPTION_PF;
+                        yakvm_vcpu_handle_npf(vcpu);
                         break;
                 default:
                         log(LOG_ERR, "yakvm_vcpu_handle_exit() get unknown "

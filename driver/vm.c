@@ -121,6 +121,18 @@ static long yakvm_vm_ioctl(struct file *filp, unsigned int ioctl, unsigned long 
 /* map the vm physical memory to host physical memory */
 static vm_fault_t yakvm_vm_vmm_fault(struct vm_fault *vmf)
 {
+        int r;
+        struct vm *vm = vmf->vma->vm_file->private_data;
+        struct page *page = yakvm_vmm_npt_create(vm->vmm, vmf->pgoff);
+        if (IS_ERR(page)) {
+                r = PTR_ERR(page);
+                log(LOG_ERR, "yakvm_vmm_npt_create() "
+                    "failed with error code %d", r);
+                return r;
+        }
+
+        get_page(page);
+        vmf->page = page;
         return 0;
 }
 

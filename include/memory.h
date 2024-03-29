@@ -12,39 +12,60 @@
         #define PTRS_PER_PAGE       (PAGE_SIZE / sizeof(unsigned long))
         static_assert(PTRS_PER_PAGE == 512);
 
-        /* Page Table */
-        typedef unsigned long pte;
-        struct pt {
-            pte entrys[PTRS_PER_PAGE];
+        typedef unsigned long entry;
+        struct table {
+            entry entrys[PTRS_PER_PAGE];
         };
-        static_assert(sizeof(struct pt) == PAGE_SIZE);
-
-        /* Page Directory Table */
-        typedef unsigned long pdte;
-        struct pdt {
-            pdte entrys[PTRS_PER_PAGE];
-        };
-        static_assert(sizeof(struct pdt) == PAGE_SIZE);
-
-        /* Page Directory Pointer Table */
-        typedef unsigned long pdpte;
-        struct pdpt {
-            pdpte entrys[PTRS_PER_PAGE];
-        };
-        static_assert(sizeof(struct pdpt) == PAGE_SIZE);
-
-        /* Page-Map Level-4 Table */
-        typedef unsigned long pml4te;
-        struct pml4t {
-            pml4te entrys[PTRS_PER_PAGE];
-        };
-        static_assert(sizeof(struct pml4t) == PAGE_SIZE);
+        static_assert(sizeof(struct table) == PAGE_SIZE);
 
         struct vmm {
             unsigned long ncr3;
             struct vm *vm;
         };
 
+        #include <asm/io.h>
+        #include "yakvm.h"
+        /* transfer physical base address to its page physical address */
+        static inline unsigned long yakvm_vmm_page(unsigned long pa) {
+            return pa & PAGE_MASK;
+        }
+        /* transfer physical base address to virtual address */
+        static inline void *yakvm_vmm_phys_to_virt(unsigned long pa)
+        {
+            return phys_to_virt(yakvm_vmm_page(pa));
+        }
+
+        /*
+         * The long mode 4-Level page table layout is described
+         * in "5.3" on page at 142
+         * https://www.amd.com/content/dam/amd/en/documents/processor-tech-docs/programmer-references/24593.pdf.
+         */
+        #define PT              1
+        #define P_SHIFT         12
+        #define PDT             2
+        #define PD_SHIFT        21
+        #define PDPT            3
+        #define PDP_SHIFT       30
+        #define PML4T           4
+        #define PML4_SHIFT      39
+        static inline uint32_t table_index(uint64_t gpa, uint32_t level)
+        {
+            switch (level) {
+                case PT:
+                    return (gpa >> P_SHIFT) & (PTRS_PER_PAGE - 1);
+                case PDT:
+                    return (gpa >> PD_SHIFT) & (PTRS_PER_PAGE - 1);
+                case PDPT:
+                    return (gpa >> PDP_SHIFT) & (PTRS_PER_PAGE - 1);
+                case PML4T:
+                    return (gpa >> PML4_SHIFT) & (PTRS_PER_PAGE - 1);
+            }
+            /* never reach here */
+            assert(false);
+        }
+
+        struct page *yakvm_vmm_npt_create(struct vmm *vmm,
+                                          unsigned long gpa);
         struct vmm *yakvm_create_vmm(struct vm *vm);
         void yakvm_destroy_vmm(struct vmm *vmm);
     #endif

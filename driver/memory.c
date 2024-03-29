@@ -1,11 +1,62 @@
+#include <asm/pgtable_types.h>
 #include <asm/io.h>
+#include <asm-generic/errno-base.h>
+#include <linux/pfn_t.h>
+#include <linux/pgtable.h>
 #include <linux/err.h>
 #include <linux/gfp.h>
 #include <linux/gfp_types.h>
+#include <linux/mm.h>
 #include <linux/slab.h>
 #include "../include/memory.h"
-#include "../include/vm.h"
 #include "../include/yakvm.h"
+
+/* create the pte for @gpa */
+struct page *yakvm_vmm_npt_create(struct vmm *vmm, unsigned long gpa)
+{
+    struct table *table;
+    struct page *page;
+    int r;
+    /*
+     * the cr3 layout is described in "5.3.2" on page 140 at
+     * https://www.amd.com/content/dam/amd/en/documents/processor-tech-docs/programmer-references/24593.pdf.
+     */
+    unsigned long entry = vmm->ncr3;
+
+    for (int level = PML4T; level >= PT; --level) {
+        int index = table_index(gpa, level);
+        table = yakvm_vmm_phys_to_virt(entry);
+        entry = table->entrys[index];
+        if (!entry) {
+            /* create *level* entry if needed */
+            page = alloc_page(GFP_KERNEL_ACCOUNT | __GFP_ZERO);
+            if (!page) {
+                log(LOG_ERR, "alloc_page() failed");
+                r = -ENOMEM;
+                goto out;
+            }
+
+            /*
+             * entry layout is described in "5.3.3" on page 144 at
+             * https://www.amd.com/content/dam/amd/en/documents/processor-tech-docs/programmer-references/24593.pdf.
+             *
+             * page-translation-table entry field is described
+             * in "5.4.1" on page 153 at
+             * https://www.amd.com/content/dam/amd/en/documents/processor-tech-docs/programmer-references/24593.pdf.
+             */
+            entry = page_to_phys(page) | _PAGE_PRESENT | _PAGE_RW;
+            table->entrys[index] = entry;
+        } else if (level == PT) {
+            r = -EEXIST;
+        }
+        assert((entry & _PAGE_PRESENT) && (entry & _PAGE_RW));
+    }
+
+    return pfn_to_page(entry >> PAGE_SHIFT);
+
+out:
+    return ERR_PTR(r);
+}
 
 struct vmm *yakvm_create_vmm(struct vm *vm)
 {
@@ -49,8 +100,25 @@ out:
     return ERR_PTR(r);
 }
 
+static void yakvm_vmm_destroy_table(struct table *table, int level)
+{
+    for (int idx = 0; idx < PTRS_PER_PAGE; ++idx) {
+        unsigned long entry = table->entrys[idx];
+        if (entry) {
+            assert((entry & _PAGE_PRESENT) && (entry & _PAGE_RW));
+            if (level == PT) {
+                free_page((unsigned long)yakvm_vmm_phys_to_virt(entry));
+            } else {
+                yakvm_vmm_destroy_table(yakvm_vmm_phys_to_virt(entry),
+                                        level - 1);
+            }
+        }
+    }
+    free_page((unsigned long)table);
+}
+
 void yakvm_destroy_vmm(struct vmm *vmm)
 {
-    free_page((unsigned long)phys_to_virt(vmm->ncr3));
+    yakvm_vmm_destroy_table(yakvm_vmm_phys_to_virt(vmm->ncr3), PML4T);
     kfree(vmm);
 }
