@@ -43,8 +43,12 @@ struct page *yakvm_vmm_npt_create(struct vmm *vmm, unsigned long gpa)
              * page-translation-table entry field is described
              * in "5.4.1" on page 153 at
              * https://www.amd.com/content/dam/amd/en/documents/processor-tech-docs/programmer-references/24593.pdf.
+             *
+             * The page must be writable by user at the nested page table
+             * level according to "15.25.5" on page 550 at
+             * https://www.amd.com/content/dam/amd/en/documents/processor-tech-docs/programmer-references/24593.pdf.
              */
-            entry = page_to_phys(page) | _PAGE_PRESENT | _PAGE_RW;
+            entry = page_to_phys(page) | _PAGE_PRESENT | _PAGE_RW | _PAGE_USER;
             table->entrys[index] = entry;
         } else if (level == PT) {
             r = -EEXIST;
