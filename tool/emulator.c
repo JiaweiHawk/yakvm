@@ -5,6 +5,7 @@
 #include <sys/mman.h>
 #include <unistd.h>
 #include "emulator.h"
+#include "memory.h"
 #include "../include/memory.h"
 #include "../include/vm.h"
 #include "../include/yakvm.h"
@@ -28,12 +29,11 @@ int main(int argc, char *argv[])
                     strerror(errno));
                 goto close_yakvmfd;
         }
-        vm.memory = mmap(NULL, YAKVM_MEMORY, PROT_READ | PROT_WRITE,
-                         MAP_SHARED, vm.vmfd, 0);
-        if (vm.memory == MAP_FAILED) {
-                ret = errno;
-                log(LOG_ERR, "mmap() failed with error %s",
-                    strerror(errno));
+
+        ret = yakvm_create_memory(&vm);
+        if (ret) {
+                log(LOG_ERR, "yakvm_create_memory() "
+                    "failed with error %d", ret);
                 goto close_vmfd;
         }
 
@@ -42,9 +42,8 @@ int main(int argc, char *argv[])
                 ret = errno;
                 log(LOG_ERR, "ioctl(YAKVM_CREATE_VCPU) failed with error %s",
                     strerror(errno));
-                goto close_vmfd;
+                goto destroy_memory;
         }
-
         assert((ioctl(vm.vmfd, YAKVM_CREATE_VCPU) == -1) && (errno == EEXIST));
 
         vm.cpu_state = mmap(NULL, getpagesize(), PROT_READ | PROT_WRITE,
@@ -62,6 +61,8 @@ int main(int argc, char *argv[])
 
 close_cpufd:
         close(vm.cpufd);
+destroy_memory:
+        yakvm_destroy_memory(&vm);
 close_vmfd:
         close(vm.vmfd);
 close_yakvmfd:

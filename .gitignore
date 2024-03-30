@@ -37,4 +37,6 @@ driver/*
 !tool
 tool/*
 !tool/emulator.c
+!tool/memory.c
 !tool/emulator.h
+!tool/memory.h
