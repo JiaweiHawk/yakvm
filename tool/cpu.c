@@ -54,5 +54,5 @@ void yakvm_destroy_cpu(struct vm *vm)
 void yakvm_cpu_run(struct vm *vm)
 {
     assert(ioctl(vm->cpu.fd, YAKVM_RUN) == 0);
-    assert(vm->cpu.state->exit_code == SVM_EXIT_EXCP_BASE + PF_VECTOR);
+    assert(vm->cpu.state->exit_code == SVM_EXIT_NPF);
 }
