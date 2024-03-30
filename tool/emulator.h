@@ -3,9 +3,10 @@
     #define __YAKVM_TOOL_EMULATOR_H_
 
     #include "../include/cpu.h"
+    #include "cpu.h"
     struct vm {
-        int vmfd, cpufd;
-        struct vcpu_state *cpu_state;
+        int vmfd;
+        struct cpu cpu;
         char *memory;
     };
 

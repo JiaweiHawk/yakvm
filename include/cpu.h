@@ -2,42 +2,15 @@
 
         #define __YAKVM_CPU_H_
 
-
         /* for userspace and kernel to share vcpu state data */
         #ifndef __KERNEL__
                 #include <stdint.h>
         #endif // __KERNEL__
-        enum YAKVM_VCPU_EXITCODE {
-                YAKVM_VCPU_EXITCODE_NULL = 0,
-                YAKVM_VCPU_EXITCODE_EXCEPTION_DE = 0x40,
-                YAKVM_VCPU_EXITCODE_EXCEPTION_DB,
-                YAKVM_VCPU_EXITCODE_EXCEPTION_V2,
-                YAKVM_VCPU_EXITCODE_EXCEPTION_BP,
-                YAKVM_VCPU_EXITCODE_EXCEPTION_OF,
-                YAKVM_VCPU_EXITCODE_EXCEPTION_BR,
-                YAKVM_VCPU_EXITCODE_EXCEPTION_UD,
-                YAKVM_VCPU_EXITCODE_EXCEPTION_NM,
-                YAKVM_VCPU_EXITCODE_EXCEPTION_DF,
-                YAKVM_VCPU_EXITCODE_EXCEPTION_v9,
-                YAKVM_VCPU_EXITCODE_EXCEPTION_TS,
-                YAKVM_VCPU_EXITCODE_EXCEPTION_NP,
-                YAKVM_VCPU_EXITCODE_EXCEPTION_SS,
-                YAKVM_VCPU_EXITCODE_EXCEPTION_GP,
-                YAKVM_VCPU_EXITCODE_EXCEPTION_PF,
-                YAKVM_VCPU_EXITCODE_EXCEPTION_MF,
-                YAKVM_VCPU_EXITCODE_EXCEPTION_AC,
-                YAKVM_VCPU_EXITCODE_EXCEPTION_MC,
-                YAKVM_VCPU_EXITCODE_EXCEPTION_XM,
-                YAKVM_VCPU_EXITCODE_EXCEPTION_VE,
+        struct state {
+                uint32_t exit_code;              // vmcb->control.exit_code
+                uint64_t exit_info_1;            // vmcb->control.exit_info_1
+                uint64_t exit_info_2;            // vmcb->control.exit_info_2
         };
-        #define YAKVM_VCPU_EXITCODE_EXCEPTION_BASE \
-                YAKVM_VCPU_EXITCODE_EXCEPTION_DE
-
-        struct vcpu_state {
-                /* from kernel to userspace */
-                enum YAKVM_VCPU_EXITCODE exitcode;              // vcpu exitcode
-        };
-
 
         #ifdef __KERNEL__
 
@@ -156,25 +129,6 @@
                         INTERCEPT_MCOMMIT,
                         INTERCEPT_TLBSYNC,
                 };
-
-                #define DE_VECTOR 0
-                #define DB_VECTOR 1
-                #define BP_VECTOR 3
-                #define OF_VECTOR 4
-                #define BR_VECTOR 5
-                #define UD_VECTOR 6
-                #define NM_VECTOR 7
-                #define DF_VECTOR 8
-                #define TS_VECTOR 10
-                #define NP_VECTOR 11
-                #define SS_VECTOR 12
-                #define GP_VECTOR 13
-                #define PF_VECTOR 14
-                #define MF_VECTOR 16
-                #define AC_VECTOR 17
-                #define MC_VECTOR 18
-                #define XM_VECTOR 19
-                #define VE_VECTOR 20
 
                 #define SVM_NESTED_CTL_NP_ENABLE	BIT(0)
 
@@ -342,7 +296,7 @@
                         struct vmcb *gvmcb;
                         struct vmcb *hvmcb;
                         void *hsave;
-                        struct vcpu_state *state;
+                        struct state *state;
                         struct vm *vm;
                 };
 
@@ -392,6 +346,24 @@
         #define SVM_EXIT_WRITE_DR6                      0x036
         #define SVM_EXIT_WRITE_DR7                      0x037
         #define SVM_EXIT_EXCP_BASE                      0x040
+                #define DE_VECTOR                       0
+                #define DB_VECTOR                       1
+                #define BP_VECTOR                       3
+                #define OF_VECTOR                       4
+                #define BR_VECTOR                       5
+                #define UD_VECTOR                       6
+                #define NM_VECTOR                       7
+                #define DF_VECTOR                       8
+                #define TS_VECTOR                       10
+                #define NP_VECTOR                       11
+                #define SS_VECTOR                       12
+                #define GP_VECTOR                       13
+                #define PF_VECTOR                       14
+                #define MF_VECTOR                       16
+                #define AC_VECTOR                       17
+                #define MC_VECTOR                       18
+                #define XM_VECTOR                       19
+                #define VE_VECTOR                       20
         #define SVM_EXIT_LAST_EXCP                      0x05f
         #define SVM_EXIT_INTR                           0x060
         #define SVM_EXIT_NMI                            0x061

@@ -27,7 +27,7 @@ tool:
 			-g -Wall -Werror \
 			-I${PWD}/kernel/build/include \
 			-o ${PWD}/shares/emulator \
-			${PWD}/tool/emulator.c ${PWD}/tool/memory.c
+			${PWD}/tool/emulator.c ${PWD}/tool/memory.c ${PWD}/tool/cpu.c
 	@echo -e '\033[0;32m[*]\033[0mbuild the yakvm tool'
 
 driver:

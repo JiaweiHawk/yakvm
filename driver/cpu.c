@@ -25,40 +25,18 @@ static int yakvm_vcpu_release(struct inode *inode, struct file *filp)
         return 0;
 }
 
-static void yakvm_vcpu_handle_npf(struct vcpu *vcpu)
-{
-        vcpu->state->exitcode = YAKVM_VCPU_EXITCODE_EXCEPTION_PF;
-}
-
 /*
- * When the *vmrun* instruction exits(back to the host), an
- * exit/reason code is stored in the *EXITCODE* field in the
- * *vmcb* according to *Appendix C* on page 745 at
- * https://www.amd.com/content/dam/amd/en/documents/processor-tech-docs/programmer-references/24593.pdf
+ * share error information from vcpu to userspace, so that
+ * virtual machine error can be handled in userspace.
  */
-static int yakvm_vcpu_handle_exit(struct vcpu *vcpu)
+static void yakvm_vcpu_share_err_to_user(struct vcpu *vcpu)
 {
-        uint32_t exit_code = vcpu->gvmcb->control.exit_code;
-        int r = 0;
+        struct state *state = vcpu->state;
+        struct vmcb_control_area *control = &vcpu->gvmcb->control;
 
-        switch (exit_code) {
-                case SVM_EXIT_EXCP_BASE ... SVM_EXIT_LAST_EXCP:
-                        vcpu->state->exitcode = exit_code
-                                - SVM_EXIT_EXCP_BASE
-                                + YAKVM_VCPU_EXITCODE_EXCEPTION_BASE;
-                        break;
-                case SVM_EXIT_NPF:
-                        yakvm_vcpu_handle_npf(vcpu);
-                        break;
-                default:
-                        log(LOG_ERR, "yakvm_vcpu_handle_exit() get unknown "
-                            "exit_code %d", exit_code);
-                        r = -EINVAL;
-                        goto out;
-        }
-
-out:
-        return r;
+        state->exit_code = control->exit_code;
+        state->exit_info_1 = control->exit_info_1;
+        state->exit_info_2 = control->exit_info_2;
 }
 
 /*
@@ -134,8 +112,8 @@ static int yakvm_vcpu_run(struct vcpu *vcpu)
 
         preempt_enable();
 
-        /* handle the *vmexit* */
-        return yakvm_vcpu_handle_exit(vcpu);
+        yakvm_vcpu_share_err_to_user(vcpu);
+        return 0;
 }
 
 static long yakvm_vcpu_ioctl(struct file *filp, unsigned int ioctl,

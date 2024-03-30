@@ -36,6 +36,8 @@ driver/*
 # pattern for files in tool directory
 !tool
 tool/*
+!tool/cpu.c
+!tool/cpu.h
 !tool/emulator.c
 !tool/memory.c
 !tool/emulator.h
