@@ -81,9 +81,9 @@ kernel space           │            │   │   │         │  │   │
 
 host must complete the following steps to execute the virtual machine:
 - enable svm as [yakvm_cpu_svm_enable()](./driver/main.c)
-- allocate the **vmcb** and initialize its control area for intercepting and state-save area for guest state saving as [yakvm_vcpu_init_vmcb()](./driver/main.c)
-- reserve the **hsave** area as [yakvm_create_vcpu()](./driver/main.c) and record its address in **VM_HSAVE_PA** msr as [yakvm_vcpu_run()](./driver/main.c) to save host state
-- execute the `clgi; vmload; vmrun; vmsave; stgi` to perform the atomic state switch as [yakvm_vcpu_run()](./driver/main.c)
+- allocate the **vmcb** and initialize its control area for intercepting and state-save area for guest state saving as [yakvm_vcpu_init_vmcb()](./driver/cpu.c)
+- reserve the **hsave** area as [yakvm_create_vcpu()](./driver/main.c) and record its address in **VM_HSAVE_PA** msr as [yakvm_vcpu_run()](./driver/cpu.c) to save host state
+- execute the `clgi; vmload; vmrun; vmsave; stgi` to perform the atomic state switch as [yakvm_vcpu_run()](./driver/cpu.c)
 
 # Reference
 
