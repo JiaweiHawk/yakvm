@@ -4,6 +4,7 @@
 #include <sys/mman.h>
 #include <unistd.h>
 #include "cpu.h"
+#include "memory.h"
 #include "emulator.h"
 #include "../include/memory.h"
 #include "../include/vm.h"
@@ -54,5 +55,13 @@ void yakvm_destroy_cpu(struct vm *vm)
 void yakvm_cpu_run(struct vm *vm)
 {
     assert(ioctl(vm->cpu.fd, YAKVM_RUN) == 0);
-    assert(vm->cpu.state->exit_code == SVM_EXIT_NPF);
+    assert(vm->cpu.state->exit_code == SVM_EXIT_NPF &&
+           vm->cpu.state->exit_info_1 == (YAKVM_EXIT_NPF_INFO1_US |
+                                          YAKVM_EXIT_NPF_INFO1_ID |
+                                          YAKVM_EXIT_NPF_INFO1_NPT) &&
+           vm->cpu.state->exit_info_2 == 0xfffff000);
+    assert(ioctl(vm->vmfd, YAKVM_MMAP_PAGE, yakvm_page(vm->cpu.state->exit_info_2)) == 0);
+    assert(ioctl(vm->cpu.fd, YAKVM_RUN) == 0);
+    assert(vm->cpu.state->exit_code == SVM_EXIT_NPF &&
+           vm->cpu.state->exit_info_2 != 0xfffff000);
 }

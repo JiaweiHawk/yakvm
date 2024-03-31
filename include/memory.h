@@ -5,11 +5,10 @@
     #define KiB * (1024)
     #define YAKVM_MEMORY        (32 KiB)
 
-
+    #include "yakvm.h"
     #ifdef __KERNEL__
 
         #include <asm/page_types.h>
-        static_assert(PAGE_SIZE == 4 KiB);
         #define PTRS_PER_PAGE       (PAGE_SIZE / sizeof(unsigned long))
         typedef unsigned long entry;
         struct table {
@@ -21,7 +20,6 @@
             struct vm *vm;
         };
 
-        #include "yakvm.h"
         /*
          * The long mode 4-Level page table layout is described
          * in "5.3" on page at 142
@@ -66,6 +64,11 @@
                                           unsigned long gpa);
         struct vmm *yakvm_create_vmm(struct vm *vm);
         void yakvm_destroy_vmm(struct vmm *vmm);
+    #else // __KERNEL__
+        #define PAGE_SIZE       (4 KiB)
+        #define PAGE_MASK       (~((unsigned long)PAGE_SIZE - 1))
     #endif
+
+    static_assert(PAGE_SIZE == 4 KiB);
 
 #endif // __YAKVM_MEMORY_H_

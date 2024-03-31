@@ -33,5 +33,6 @@
         #include "../include/yakvm.h"
         /* ioctls for vm fds */
         #define YAKVM_CREATE_VCPU       _IO(YAKVMIO,   0x10) /* returns a vcpu fd */
+        #define YAKVM_MMAP_PAGE         _IO(YAKVMIO,   0x11) /* map the gpa to hpa */
 
 #endif // __YAKVM_VM_H_

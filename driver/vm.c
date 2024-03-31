@@ -94,6 +94,20 @@ out:
         return r;
 }
 
+/* map the gpa to a host physical page */
+static int yakvm_vm_ioctl_mmap_page(struct vm *vm, unsigned long gpa)
+{
+        struct page *page = yakvm_vmm_npt_create(vm->vmm, gpa);
+        if (IS_ERR(page)) {
+                int r = PTR_ERR(page);
+                log(LOG_ERR, "yakvm_vmm_npt_create() "
+                    "failed with error code %d", r);
+                return r;
+        }
+
+        return 0;
+}
+
 static long yakvm_vm_ioctl(struct file *filp, unsigned int ioctl, unsigned long arg)
 {
         struct vm *vm = filp->private_data;
@@ -106,6 +120,15 @@ static long yakvm_vm_ioctl(struct file *filp, unsigned int ioctl, unsigned long 
                                 log(LOG_ERR,
                                      "yakvm_dev_ioctl_create_vm() "
                                      "failed with error code %d", r);
+                        }
+                        return r;
+
+                case YAKVM_MMAP_PAGE:
+                        r = yakvm_vm_ioctl_mmap_page(vm, arg);
+                        if (r < 0) {
+                                log(LOG_ERR,
+                                    "yakvm_vm_ioctl_mmap_page() "
+                                    "failed with error code %d", r);
                         }
                         return r;
 
