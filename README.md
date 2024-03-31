@@ -85,6 +85,32 @@ host must complete the following steps to execute the virtual machine:
 - reserve the **hsave** area as [yakvm_create_vcpu()](./driver/main.c) and record its address in **VM_HSAVE_PA** msr as [yakvm_vcpu_run()](./driver/cpu.c) to save host state
 - execute the `clgi; vmload; vmrun; vmsave; stgi` to perform the atomic state switch as [yakvm_vcpu_run()](./driver/cpu.c)
 
+## memory virtualization
+
+```
+┌────────────────────────────────────────────────────────────────────────────┐
+│                                                                            │
+│  ┌─────────────────────────────────┐                                       │
+│  │                                 │                                       │
+│  │     ┌──────────────────────┐    │        ┌────────────────────────────┐ │
+│  │     │guest physical address├────┼────▲──►│host physical address       │ │
+│  │     └──────────────────────┘    │    │   └────────────────────────────┘ │
+│  │                                 │    │                                  │
+│  │ ┌─────────────────────────────┐ │    │                                  │
+│  │ │Virtual Machine Control Block│ │  ┌─┴────────────────┐                 │
+│  │ │        struct vmcb          ├─┼─►│nested page table │                 │
+│  │ └─────────────────────────────┘ │  └──────────────────┘                 │
+│  │            virtual cpu          │                                       │
+│  └─────────────────────────────────┘                                       │
+│                                                                            │
+│                                      host                                  │
+└────────────────────────────────────────────────────────────────────────────┘
+```
+
+host must complete the following steps to supported memory virtualization
+- enable **NP_ENABLE** bit in the **vmcb** as [yakvm_vcpu_init_vmcb()](./driver/cpu.c)
+- create the **nested page table** entry to map **gpa** with **hpa** as [yakvm_vm_ioctl_mmap_page()](./driver/vm.c)
+
 # Reference
 
 - [pandengyang/peach](https://github.com/pandengyang/peach)
