@@ -7,8 +7,6 @@
 #include "cpu.h"
 #include "emulator.h"
 #include "memory.h"
-#include "../include/memory.h"
-#include "../include/vm.h"
 #include "../include/yakvm.h"
 
 int main(int argc, char *argv[])
