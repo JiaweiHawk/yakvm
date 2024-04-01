@@ -20,6 +20,7 @@
 include/*
 !include/cpu.h
 !include/memory.h
+!include/vcpu_run.h
 !include/vm.h
 !include/yakvm.h
 
@@ -30,6 +31,7 @@ driver/*
 !driver/cpu.c
 !driver/main.c
 !driver/memory.c
+!driver/vcpu_run.S
 !driver/vm.c
 !driver/Makefile
 

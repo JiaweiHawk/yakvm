@@ -32,7 +32,7 @@ static int yakvm_vcpu_release(struct inode *inode, struct file *filp)
 static void yakvm_vcpu_share_err_to_user(struct vcpu *vcpu)
 {
         struct state *state = vcpu->state;
-        struct vmcb_control_area *control = &vcpu->gvmcb->control;
+        struct vmcb_control_area *control = &vcpu->gctx.vmcb->control;
 
         state->exit_code = control->exit_code;
         state->exit_info_1 = control->exit_info_1;
@@ -85,24 +85,17 @@ static int yakvm_vcpu_run(struct vcpu *vcpu)
         asm volatile (
                 "vmsave %0\n\t"
                 :
-                :"a"(virt_to_phys(vcpu->hvmcb))
+                :"a"(virt_to_phys(vcpu->hctx.vmcb))
                 :"memory"
         );
 
-        asm volatile (
-                /* enter guest mode */
-                "vmload %0\n\t"
-                "vmrun %0\n\t"
-                "vmsave %0\n\t"
-                :
-                :"a"(virt_to_phys(vcpu->gvmcb))
-                :"cc", "memory"
-        );
+        /* enter guest */
+        _yakvm_vcpu_run(&vcpu->gctx, &vcpu->hctx, virt_to_phys(vcpu->gctx.vmcb));
 
         asm volatile (
                 "vmload %0\n\t"
                 :
-                :"a"(virt_to_phys(vcpu->hvmcb))
+                :"a"(virt_to_phys(vcpu->hctx.vmcb))
                 :"cc"
         );
 
@@ -224,7 +217,7 @@ static void yakvm_vcpu_init_vmcb(struct vcpu *vcpu)
          * hvmcb* as it is only used to temporarily store the
          * host state during guest execution.
          */
-        struct vmcb *vmcb = vcpu->gvmcb;
+        struct vmcb *vmcb = vcpu->gctx.vmcb;
 
         /*
          * initialize the guest to the initial processor state
@@ -365,8 +358,8 @@ struct vcpu* yakvm_create_vcpu(struct vm *vm)
 
         /* initialize the vcpu */
         mutex_init(&vcpu->lock);
-        vcpu->gvmcb = page_address(gvmcb);
-        vcpu->hvmcb = page_address(hvmcb);
+        vcpu->gctx.vmcb = page_address(gvmcb);
+        vcpu->hctx.vmcb = page_address(hvmcb);
         vcpu->hsave = page_address(hsave);
         vcpu->state = page_address(state);
         vcpu->vm = vm;
@@ -391,7 +384,7 @@ void yakvm_destroy_vcpu(struct vcpu *vcpu)
 {
         free_page((unsigned long)vcpu->state);
         free_page((unsigned long)vcpu->hsave);
-        free_page((unsigned long)vcpu->hvmcb);
-        free_page((unsigned long)vcpu->gvmcb);
+        free_page((unsigned long)vcpu->hctx.vmcb);
+        free_page((unsigned long)vcpu->gctx.vmcb);
         kfree(vcpu);
 }

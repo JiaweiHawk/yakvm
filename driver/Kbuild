@@ -1,2 +1,2 @@
 obj-m   := yakvm.o
-yakvm-y	:= cpu.o main.o memory.o vm.o
+yakvm-y	:= cpu.o main.o memory.o vcpu_run.o vm.o

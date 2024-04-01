@@ -2,6 +2,7 @@
 
         #define __YAKVM_CPU_H_
 
+
         /* for userspace and kernel to share vcpu state data */
         #ifndef __KERNEL__
                 #include <stdint.h>
@@ -290,21 +291,74 @@
 
                 #include <linux/mutex.h>
                 #include "vm.h"
+                struct context {
+                        struct vmcb *vmcb;
+                        uint64_t rbx;
+                        uint64_t rcx;
+                        uint64_t rdx;
+                        uint64_t rdi;
+                        uint64_t rsi;
+                        uint64_t rbp;
+                        uint64_t r8;
+                        uint64_t r9;
+                        uint64_t r10;
+                        uint64_t r11;
+                        uint64_t r12;
+                        uint64_t r13;
+                        uint64_t r14;
+                        uint64_t r15;
+                };
+                #include "vcpu_run.h"
+                static_assert(offsetof(struct context, vmcb) ==
+                              YAKVM_VCPU_CONTEXT_VMCB_OFF);
+                static_assert(offsetof(struct context, rbx) ==
+                              YAKVM_VCPU_CONTEXT_RBX_OFF);
+                static_assert(offsetof(struct context, rcx) ==
+                              YAKVM_VCPU_CONTEXT_RCX_OFF);
+                static_assert(offsetof(struct context, rdx) ==
+                              YAKVM_VCPU_CONTEXT_RDX_OFF);
+                static_assert(offsetof(struct context, rdi) ==
+                              YAKVM_VCPU_CONTEXT_RDI_OFF);
+                static_assert(offsetof(struct context, rsi) ==
+                              YAKVM_VCPU_CONTEXT_RSI_OFF);
+                static_assert(offsetof(struct context, rbp) ==
+                              YAKVM_VCPU_CONTEXT_RBP_OFF);
+                static_assert(offsetof(struct context, r8) ==
+                              YAKVM_VCPU_CONTEXT_R8_OFF);
+                static_assert(offsetof(struct context, r9) ==
+                              YAKVM_VCPU_CONTEXT_R9_OFF);
+                static_assert(offsetof(struct context, r10) ==
+                              YAKVM_VCPU_CONTEXT_R10_OFF);
+                static_assert(offsetof(struct context, r11) ==
+                              YAKVM_VCPU_CONTEXT_R11_OFF);
+                static_assert(offsetof(struct context, r12) ==
+                              YAKVM_VCPU_CONTEXT_R12_OFF);
+                static_assert(offsetof(struct context, r13) ==
+                              YAKVM_VCPU_CONTEXT_R13_OFF);
+                static_assert(offsetof(struct context, r14) ==
+                              YAKVM_VCPU_CONTEXT_R14_OFF);
+                static_assert(offsetof(struct context, r15) ==
+                              YAKVM_VCPU_CONTEXT_R15_OFF);
                 /* virtual cpu data structure */
                 struct vcpu {
                         struct mutex lock;
-                        struct vmcb *gvmcb;
-                        struct vmcb *hvmcb;
+                        struct context gctx;
+                        struct context hctx;
                         void *hsave;
                         struct state *state;
                         struct vm *vm;
                 };
 
                 /* create the vcpu */
-                extern struct vcpu* yakvm_create_vcpu(struct vm *vm);
+                struct vcpu* yakvm_create_vcpu(struct vm *vm);
 
                 /* destory the vcpu */
-                extern void yakvm_destroy_vcpu(struct vcpu *vcpu);
+                void yakvm_destroy_vcpu(struct vcpu *vcpu);
+
+                /* vcpu_Run.S */
+                extern void _yakvm_vcpu_run(struct context *gctx,
+                                            struct context *hctx,
+                                            unsigned long vmcb_pa);
 
                 #include <linux/fs.h>
                 extern const struct file_operations yakvm_vcpu_fops;
