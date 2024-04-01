@@ -6,7 +6,6 @@
 #include "cpu.h"
 #include "memory.h"
 #include "emulator.h"
-#include "../include/memory.h"
 #include "../include/vm.h"
 
 int yakvm_create_cpu(struct vm *vm)
