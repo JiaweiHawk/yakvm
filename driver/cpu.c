@@ -33,10 +33,13 @@ static void yakvm_vcpu_share_err_to_user(struct vcpu *vcpu)
 {
         struct state *state = vcpu->state;
         struct vmcb_control_area *control = &vcpu->gctx.vmcb->control;
+        struct vmcb_save_area *save = &vcpu->gctx.vmcb->save;
 
         state->exit_code = control->exit_code;
         state->exit_info_1 = control->exit_info_1;
         state->exit_info_2 = control->exit_info_2;
+        state->cs = save->cs.selector;
+        state->rip = save->rip;
 }
 
 /*
@@ -261,6 +264,14 @@ static void yakvm_vcpu_init_vmcb(struct vcpu *vcpu)
                                         SEG_TYPE_BUSY_TSS16, 0xffff, 0x0);
         vmcb->save.dr6 = DR6_ACTIVE_LOW;
         vmcb->save.dr7 = DR7_FIXED_1;
+
+        /*
+         * Enable the *X86_EFLAGS_TF* to enable single-step mode for
+         * debugging the guest code according to "13.1.4" on page 407 at
+         * https://www.amd.com/content/dam/amd/en/documents/processor-tech-docs/programmer-references/24593.pdf
+         */
+        vmcb->save.rflags |= X86_EFLAGS_TF;
+        yakvm_vmcb_set_exception_intercept(vmcb, DB_VECTOR);
 
         /*
          * with Nested Paging Table(NPT) enabled, the nested page table,

@@ -11,6 +11,10 @@
                 uint32_t exit_code;              // vmcb->control.exit_code
                 uint64_t exit_info_1;            // vmcb->control.exit_info_1
                 uint64_t exit_info_2;            // vmcb->control.exit_info_2
+
+                /* used for #DB */
+                uint16_t cs;
+                uint64_t rip;
         };
 
         #ifdef __KERNEL__
