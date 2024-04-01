@@ -17,6 +17,27 @@
                 uint64_t rip;
         };
 
+        struct registers {
+                uint64_t rax;
+                uint64_t rbx;
+                uint64_t rcx;
+                uint64_t rdx;
+                uint64_t rdi;
+                uint64_t rsi;
+                uint64_t rbp;
+                uint64_t rsp;
+                uint64_t r8;
+                uint64_t r9;
+                uint64_t r10;
+                uint64_t r11;
+                uint64_t r12;
+                uint64_t r13;
+                uint64_t r14;
+                uint64_t r15;
+                uint64_t rip;
+                uint16_t cs;
+        };
+
         #ifdef __KERNEL__
 
                 /*
@@ -372,6 +393,8 @@
         #include "../include/yakvm.h"
         /* ioctls for vcpu fds */
         #define YAKVM_RUN               _IO(YAKVMIO,   0x20)
+        #define YAKVM_GET_REGS          _IO(YAKVMIO,   0x21)
+        #define YAKVM_SET_REGS          _IO(YAKVMIO,   0x22)
 
         /*
          * *vmexit* exit code according to "Appendix C" on page 745 at

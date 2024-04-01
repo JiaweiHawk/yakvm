@@ -10,6 +10,7 @@
 #include <linux/preempt.h>
 #include <linux/slab.h>
 #include <linux/types.h>
+#include <linux/uaccess.h>
 #include "../include/cpu.h"
 #include "../include/memory.h"
 #include "../include/vm.h"
@@ -38,7 +39,7 @@ static void yakvm_vcpu_share_err_to_user(struct vcpu *vcpu)
         state->exit_code = control->exit_code;
         state->exit_info_1 = control->exit_info_1;
         state->exit_info_2 = control->exit_info_2;
-        state->cs = save->cs.selector;
+        state->cs = save->cs.base;
         state->rip = save->rip;
 }
 
@@ -112,6 +113,76 @@ static int yakvm_vcpu_run(struct vcpu *vcpu)
         return 0;
 }
 
+/* copy vcpu registers state to userspace */
+static int yakvm_vcpu_get_regs(struct vcpu *vcpu,
+                               void * __user dest)
+{
+        struct registers regs;
+        int r;
+
+        regs.rax = vcpu->gctx.vmcb->save.rax;
+        regs.rbx = vcpu->gctx.rbx;
+        regs.rcx = vcpu->gctx.rcx;
+        regs.rdx = vcpu->gctx.rdx;
+        regs.rdi = vcpu->gctx.rdi;
+        regs.rsi = vcpu->gctx.rsi;
+        regs.rbp = vcpu->gctx.rbp;
+        regs.rsp = vcpu->gctx.vmcb->save.rsp;
+        regs.r8 = vcpu->gctx.r8;
+        regs.r9 = vcpu->gctx.r9;
+        regs.r10 = vcpu->gctx.r10;
+        regs.r11 = vcpu->gctx.r11;
+        regs.r12 = vcpu->gctx.r12;
+        regs.r13 = vcpu->gctx.r13;
+        regs.r14 = vcpu->gctx.r14;
+        regs.r15 = vcpu->gctx.r15;
+        regs.rip = vcpu->gctx.vmcb->save.rip;
+        regs.cs = vcpu->gctx.vmcb->save.cs.base;
+
+        r = copy_to_user(dest, &regs, sizeof(regs));
+        if (r) {
+                log(LOG_ERR, "copy_to_user() failed with %d bytes", r);
+                return -EFAULT;
+        }
+
+        return 0;
+}
+
+/* copy vcpu registers state from userspace */
+static int yakvm_vcpu_set_regs(struct vcpu *vcpu,
+                               void * __user src)
+{
+        struct registers regs;
+        int r;
+
+        r = copy_from_user(&regs, src, sizeof(regs));
+        if (r) {
+                log(LOG_ERR, "copy_from_user() failed with %d bytes", r);
+                return -EFAULT;
+        }
+
+        vcpu->gctx.vmcb->save.rax = regs.rax;
+        vcpu->gctx.rbx = regs.rbx;
+        vcpu->gctx.rcx = regs.rcx;
+        vcpu->gctx.rdx = regs.rdx;
+        vcpu->gctx.rdi = regs.rdi;
+        vcpu->gctx.rsi = regs.rsi;
+        vcpu->gctx.rbp = regs.rbp;
+        vcpu->gctx.vmcb->save.rsp = regs.rsp;
+        vcpu->gctx.r8 = regs.r8;
+        vcpu->gctx.r9 = regs.r9;
+        vcpu->gctx.r10 = regs.r10;
+        vcpu->gctx.r11 = regs.r11;
+        vcpu->gctx.r12 = regs.r12;
+        vcpu->gctx.r13 = regs.r13;
+        vcpu->gctx.r14 = regs.r14;
+        vcpu->gctx.r15 = regs.r15;
+        vcpu->gctx.vmcb->save.rip = regs.rip;
+        vcpu->gctx.vmcb->save.cs.base = regs.cs;
+
+        return 0;
+}
+
 static long yakvm_vcpu_ioctl(struct file *filp, unsigned int ioctl,
                              unsigned long arg)
 {
@@ -125,6 +196,15 @@ static long yakvm_vcpu_ioctl(struct file *filp, unsigned int ioctl,
                 case YAKVM_RUN:
                         r = yakvm_vcpu_run(vcpu);
                         break;
+
+                case YAKVM_GET_REGS:
+                        r = yakvm_vcpu_get_regs(vcpu, (void *)arg);
+                        break;
+
+                case YAKVM_SET_REGS:
+                        r = yakvm_vcpu_set_regs(vcpu, (void *)arg);
+                        break;
+
                 default:
                         log(LOG_ERR, "yakvm_vm_ioctl() get unknown ioctl %d",
                             ioctl);

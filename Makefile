@@ -16,6 +16,8 @@ QEMU_OPTIONS                            := ${QEMU_OPTIONS} -enable-kvm
 QEMU_OPTIONS                            := ${QEMU_OPTIONS} -nographic
 QEMU_OPTIONS                            := ${QEMU_OPTIONS} -no-reboot
 
+YAKVM_BIN_ENTRY                         := 0
+
 .PHONY: debug driver env kernel rootfs run srcs test tool
 
 srcs: driver tool
@@ -27,6 +29,7 @@ tool:
 			-g -Wall -Werror \
 			-I${PWD}/kernel/build/include \
 			-o ${PWD}/shares/emulator \
+			-DYAKVM_BIN_ENTRY=${YAKVM_BIN_ENTRY} \
 			${PWD}/tool/emulator.c ${PWD}/tool/memory.c ${PWD}/tool/cpu.c
 	@echo -e '\033[0;32m[*]\033[0mbuild the yakvm tool'
 
