@@ -36,6 +36,8 @@ int yakvm_create_cpu(struct vm *vm)
     regs.rip = YAKVM_BIN_ENTRY;
     assert(ioctl(vm->cpu.fd, YAKVM_SET_REGS, &regs) == 0);
 
+    vm->cpu.mode = RUNNING;
+
     return 0;
 
 close_cpufd:
@@ -50,28 +52,42 @@ void yakvm_destroy_cpu(struct vm *vm)
     assert(!close(vm->cpu.fd));
 }
 
- /*
-  * When the *vmrun* instruction exits(back to the host), an
-  * exit/reason code is stored in the *EXITCODE* field in the
-  * *vmcb* according to *Appendix C* on page 745 at
-  * https://www.amd.com/content/dam/amd/en/documents/processor-tech-docs/programmer-references/24593.pdf
-  */
+static int yakvm_cpu_handle_exit(struct vm *vm)
+{
+        switch (vm->cpu.state->exit_code) {
+                case SVM_EXIT_NPF:
+                        assert(ioctl(vm->vmfd, YAKVM_MMAP_PAGE,
+                                        yakvm_page(vm->cpu.state->exit_info_2)) == 0);
+                        break;
+
+                case SVM_EXIT_EXCP_BASE + DB_VECTOR:
+                        log(LOG_INFO, "guest executes instruction at %#x:%#lx",
+                            vm->cpu.state->cs, vm->cpu.state->rip);
+                        break;
+
+                case SVM_EXIT_HLT:
+                        vm->cpu.mode = HLT;
+                        break;
+
+                default:
+                        log(LOG_ERR, "improper exit_code %#x",
+                            vm->cpu.state->exit_code);
+                        return -EINVAL;
+        }
+
+        return 0;
+}
+
+/*
+ * When the *vmrun* instruction exits(back to the host), an
+ * exit/reason code is stored in the *EXITCODE* field in the
+ * *vmcb* according to *Appendix C* on page 745 at
+ * https://www.amd.com/content/dam/amd/en/documents/processor-tech-docs/programmer-references/24593.pdf
+ */
 void yakvm_cpu_run(struct vm *vm)
 {
-    assert(ioctl(vm->cpu.fd, YAKVM_RUN) == 0);
-    assert(vm->cpu.state->exit_code == (SVM_EXIT_EXCP_BASE + DB_VECTOR) &&
-           vm->cpu.state->cs == 0x0 && vm->cpu.state->rip == 0x4);
-
-    assert(ioctl(vm->cpu.fd, YAKVM_RUN) == 0);
-    assert(vm->cpu.state->exit_code == SVM_EXIT_NPF &&
-           vm->cpu.state->exit_info_1 == (YAKVM_EXIT_NPF_INFO1_RW |
-                                          YAKVM_EXIT_NPF_INFO1_US |
-                                          YAKVM_EXIT_NPF_INFO1_NPT) &&
-           vm->cpu.state->exit_info_2 == 0x7ffe);
-    assert(ioctl(vm->vmfd, YAKVM_MMAP_PAGE,
-           yakvm_page(vm->cpu.state->exit_info_2)) == 0);
-
-    assert(ioctl(vm->cpu.fd, YAKVM_RUN) == 0);
-    assert(vm->cpu.state->exit_code == (SVM_EXIT_EXCP_BASE + DB_VECTOR) &&
-           vm->cpu.state->cs == 0x0 && vm->cpu.state->rip == 0x5);
+        while(vm->cpu.mode == RUNNING) {
+                assert(ioctl(vm->cpu.fd, YAKVM_RUN) == 0);
+                assert(yakvm_cpu_handle_exit(vm) == 0);
+        }
 }

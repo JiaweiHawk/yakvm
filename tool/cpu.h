@@ -2,9 +2,15 @@
 
     #define __YAKVM_TOOL_CPU_H
 
+    enum mode {
+        RUNNING = 0,
+        HLT,
+    };
+
     #include "../include/cpu.h"
     struct cpu {
         struct state *state;
+        enum mode mode;
         int fd;
     };
 

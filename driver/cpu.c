@@ -353,6 +353,8 @@ static void yakvm_vcpu_init_vmcb(struct vcpu *vcpu)
         vmcb->save.rflags |= X86_EFLAGS_TF;
         yakvm_vmcb_set_exception_intercept(vmcb, DB_VECTOR);
 
+        yakvm_vmcb_set_intercept(vmcb, INTERCEPT_HLT);
+
         /*
          * with Nested Paging Table(NPT) enabled, the nested page table,
          * residing in system physical memory and pointed to by nCR3,

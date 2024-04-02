@@ -27,7 +27,7 @@ tool:
 	bear --append --output ${PWD}/compile_commands.json -- \
 		gcc \
 			-g -Wall -Werror \
-			-m16 \
+			-march=i686 -m16 -ffreestanding \
 			-nostdlib \
 			-no-pie \
 			-nostdlib \
@@ -122,6 +122,7 @@ debug:
 test:
 	if [ "$(shell lscpu | grep 'AMD-V' | wc -l)" = "1" ]; then \
 		${PWD}/test.py --command='''${QEMU} ${QEMU_OPTIONS}''' --history=${PWD}/shares/setup.sh; \
+		objdump -d -mi8086 -Maddr16,data16 ${PWD}/shares/guest.elf; \
 	else \
 		echo '\033[0;31m[*]\033[0mAMD-V is not supported on this platform'; \
 	fi

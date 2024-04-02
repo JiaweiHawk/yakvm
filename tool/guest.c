@@ -2,5 +2,5 @@
 
 void entry(void)
 {
-        asm volatile(".zero 4");
+        hlt();
 }

@@ -102,6 +102,15 @@ if __name__ == "__main__":
 
         qemu.execute("/mnt/shares/emulator /mnt/shares/guest.bin")
         qemu.runtil("yakvm_create_vm() creates the kvm kvm-", timeout=args.timeout)
+        qemu.runtil("yakvm_dev_ioctl_create_vm() failed with error code -17", timeout=args.timeout)
+
+        qemu.runtil("guest executes instruction at 0:0x2", timeout=args.timeout)
+        qemu.runtil("guest executes instruction at 0:0x5", timeout=args.timeout)
+        qemu.runtil("guest executes instruction at 0:0x17", timeout=args.timeout)
+        qemu.runtil("guest executes instruction at 0:0x1c", timeout=args.timeout)
+        qemu.runtil("guest executes instruction at 0:0xb", timeout=args.timeout)
+        qemu.runtil("guest executes instruction at 0:0x11", timeout=args.timeout)
+
         qemu.runtil("yakvm_destroy_vm() destroys the kvm kvm-", timeout=args.timeout)
 
         qemu.execute("rmmod yakvm")
