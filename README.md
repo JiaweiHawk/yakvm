@@ -111,6 +111,18 @@ host must complete the following steps to supported memory virtualization
 - enable **NP_ENABLE** bit in the **vmcb** as [yakvm_vcpu_init_vmcb()](./driver/cpu.c)
 - create the **nested page table** entry to map **gpa** with **hpa** as [yakvm_vm_ioctl_mmap_page()](./driver/vm.c)
 
+## device virtualization
+
+Considering there are two ways to access devices under x86 architecture: **Port I/O(PIO)** and **Memory Mapped I/O(MMIO)**, we should virtualizing there two methods.
+
+### PIO
+
+PIO virtualization can be achieved by configuring the **vmcb** to intercept PIO.
+
+### MMIO
+
+For MMIO, remove the **_PAGE_PRESENT** flag from the corresponding MMIO memory's **Nested Paging Table** entry to intercept MMIO.
+
 # Reference
 
 - [pandengyang/peach](https://github.com/pandengyang/peach)
