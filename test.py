@@ -7,6 +7,8 @@ import subprocess
 import sys
 import traceback
 import time
+import unicorn
+import typing
 
 class QemuTerminate(Exception):
     pass
@@ -74,6 +76,43 @@ class Qemu:
         self.proc.kill()
         self.proc.wait()
 
+class VM:
+
+    INVALID_EIP = (1 << 64) - 1
+    HLT_CODE = "\xf4"
+
+    def __single_step(uc:unicorn.Uc, addr:int, size:int, vm):
+        if (not addr == vm.entry):
+                vm.qemu.runtil("guest executes instruction at 0:%s"%(hex(addr)),
+                            timeout=args.timeout)
+
+        if (uc.mem_read(addr, len(VM.HLT_CODE)) == VM.HLT_CODE):
+            uc.emu_stop()
+
+    def __init__(self, args:argparse.Namespace, qemu:Qemu) -> None:
+        self.entry = args.entry
+
+        # initialize vm in x86-16bit mode
+        self.unicorn = unicorn.Uc(unicorn.UC_ARCH_X86, unicorn.UC_MODE_16)
+
+        # map vm memory
+        self.unicorn.mem_map(0, args.memory)
+
+        # set registers
+        self.unicorn.reg_write(unicorn.x86_const.UC_X86_REG_SP, 0)
+        self.unicorn.reg_write(unicorn.x86_const.UC_X86_REG_IP, args.entry)
+
+        with open(args.bin, "rb") as bin:
+                self.unicorn.mem_write(0, bin.read(args.memory))
+
+        # trace all instructions
+        self.unicorn.hook_add(unicorn.UC_HOOK_CODE, VM.__single_step, self)
+
+        self.qemu = qemu
+
+    def check(self):
+        self.unicorn.emu_start(self.entry, self.INVALID_EIP)
+
 if __name__ == "__main__":
     ret = 0
     qemu:Qemu = None
@@ -85,9 +124,18 @@ if __name__ == "__main__":
     parser.add_argument("--history", action="store",
                         type=str, required=True,
                         help="path to store executed commands")
+    parser.add_argument("--bin", action="store",
+                        type=str, required=True,
+                        help="guest binary path")
     parser.add_argument("--timeout", action="store",
                         type=int, default=10,
                         help="max timeout for receiving from guest")
+    parser.add_argument("--entry", action="store",
+                        type=int, default=0,
+                        help="entry address for guest bin")
+    parser.add_argument("--memory", action="store",
+                        type=int, default=2 * 1024 * 1024,
+                        help="guest memory size")
     args = parser.parse_args()
 
     try:
@@ -101,15 +149,11 @@ if __name__ == "__main__":
         qemu.runtil("initialize yakvm", timeout=args.timeout)
 
         qemu.execute("/mnt/shares/emulator /mnt/shares/guest.bin")
-        qemu.runtil("yakvm_create_vm() creates the kvm kvm-", timeout=args.timeout)
-        qemu.runtil("yakvm_dev_ioctl_create_vm() failed with error code -17", timeout=args.timeout)
+        qemu.runtil("yakvm_create_vm() creates the kvm", timeout=args.timeout)
+        qemu.runtil("vcpu has been created for kvm", timeout=args.timeout)
 
-        qemu.runtil("guest executes instruction at 0:0x2", timeout=args.timeout)
-        qemu.runtil("guest executes instruction at 0:0x5", timeout=args.timeout)
-        qemu.runtil("guest executes instruction at 0:0x17", timeout=args.timeout)
-        qemu.runtil("guest executes instruction at 0:0x1c", timeout=args.timeout)
-        qemu.runtil("guest executes instruction at 0:0xb", timeout=args.timeout)
-        qemu.runtil("guest executes instruction at 0:0x11", timeout=args.timeout)
+        vm:VM = VM(args, qemu)
+        vm.check()
 
         qemu.runtil("yakvm_destroy_vm() destroys the kvm kvm-", timeout=args.timeout)
 

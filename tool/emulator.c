@@ -49,6 +49,8 @@ int main(int argc, char *argv[])
 
         yakvm_cpu_run(&vm);
 
+        sleep(2); // for test check
+
         yakvm_destroy_cpu(&vm);
 destroy_memory:
         yakvm_destroy_memory(&vm);

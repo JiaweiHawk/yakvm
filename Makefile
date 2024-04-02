@@ -17,6 +17,7 @@ QEMU_OPTIONS                            := ${QEMU_OPTIONS} -nographic
 QEMU_OPTIONS                            := ${QEMU_OPTIONS} -no-reboot
 
 YAKVM_BIN_ENTRY                         := 0
+YAKVM_MEMORY                            := $(shell expr 1 \* 1024 \* 1024)
 
 .PHONY: debug driver env kernel rootfs run srcs test tool
 
@@ -46,12 +47,17 @@ tool:
 			-I${PWD}/kernel/build/include \
 			-o ${PWD}/shares/emulator \
 			-DYAKVM_BIN_ENTRY=${YAKVM_BIN_ENTRY} \
+			-DYAKVM_MEMORY=${YAKVM_MEMORY} \
 			${PWD}/tool/emulator.c ${PWD}/tool/memory.c ${PWD}/tool/cpu.c ${PWD}/tool/arguments.c
 	@echo -e '\033[0;32m[*]\033[0mbuild the yakvm tool'
 
 driver:
 	bear --append --output ${PWD}/compile_commands.json -- \
-		make -C ${PWD}/driver KDIR=${PWD}/kernel -j ${NPROC}
+		make \
+			EXTRA_CFLAGS=-DYAKVM_MEMORY=${YAKVM_MEMORY} \
+			-C ${PWD}/driver \
+			KDIR=${PWD}/kernel \
+			-j ${NPROC}
 	cp ${PWD}/driver/yakvm.ko ${PWD}/shares
 	@echo -e '\033[0;32m[*]\033[0mbuild the yakvm kernel module'
 
@@ -79,6 +85,7 @@ rootfs:
 	if [ ! -d ${PWD}/rootfs ]; then \
 		sudo apt update; \
 		sudo apt-get install -y debootstrap; \
+		pip install unicorn; \
 		sudo debootstrap \
 			--components=main,contrib,non-free,non-free-firmware \
 			stable ${PWD}/rootfs https://mirrors.ustc.edu.cn/debian/; \
@@ -121,7 +128,12 @@ debug:
 
 test:
 	if [ "$(shell lscpu | grep 'AMD-V' | wc -l)" = "1" ]; then \
-		${PWD}/test.py --command='''${QEMU} ${QEMU_OPTIONS}''' --history=${PWD}/shares/setup.sh; \
+		${PWD}/test.py \
+			--command='''${QEMU} ${QEMU_OPTIONS}''' \
+			--history=${PWD}/shares/setup.sh \
+			--entry=${YAKVM_BIN_ENTRY} \
+			--memory=${YAKVM_MEMORY} \
+			--bin=${PWD}/shares/guest.bin && \
 		objdump -d -mi8086 -Maddr16,data16 ${PWD}/shares/guest.elf; \
 	else \
 		echo '\033[0;31m[*]\033[0mAMD-V is not supported on this platform'; \

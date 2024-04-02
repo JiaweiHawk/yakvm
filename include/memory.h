@@ -3,7 +3,6 @@
     #define __YAKVM_MEMORY_H_
 
     #define KiB * (1024)
-    #define YAKVM_MEMORY        (32 KiB)
 
     #include "yakvm.h"
     #ifdef __KERNEL__

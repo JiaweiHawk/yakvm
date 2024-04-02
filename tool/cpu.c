@@ -14,6 +14,7 @@ int yakvm_create_cpu(struct vm *vm)
     struct registers regs = {};
 
     vm->cpu.fd = ioctl(vm->vmfd, YAKVM_CREATE_VCPU);
+    sleep(2); // for test check
     if (vm->cpu.fd < 0) {
             ret = errno;
             log(LOG_ERR, "ioctl(YAKVM_CREATE_VCPU) failed with error %s",
@@ -22,6 +23,7 @@ int yakvm_create_cpu(struct vm *vm)
     }
 
     assert((ioctl(vm->vmfd, YAKVM_CREATE_VCPU) == -1) && (errno == EEXIST));
+    sleep(2); // for test check
 
     vm->cpu.state = mmap(NULL, sizeof(*vm->cpu.state),
                          PROT_READ | PROT_WRITE,MAP_SHARED, vm->cpu.fd, 0);
@@ -32,7 +34,6 @@ int yakvm_create_cpu(struct vm *vm)
             goto close_cpufd;
     }
 
-    regs.rbp = regs.rsp = YAKVM_MEMORY;
     regs.rip = YAKVM_BIN_ENTRY;
     assert(ioctl(vm->cpu.fd, YAKVM_SET_REGS, &regs) == 0);
 
