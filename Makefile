@@ -27,10 +27,26 @@ tool:
 	bear --append --output ${PWD}/compile_commands.json -- \
 		gcc \
 			-g -Wall -Werror \
+			-m16 \
+			-nostdlib \
+			-no-pie \
+			-nostdlib \
+			--entry=entry \
+			-Ttext ${YAKVM_BIN_ENTRY} \
+			-o ${PWD}/shares/guest.elf \
+			${PWD}/tool/guest.c
+	objcopy \
+		-O binary \
+		-j .text \
+		${PWD}/shares/guest.elf \
+		${PWD}/shares/guest.bin
+	bear --append --output ${PWD}/compile_commands.json -- \
+		gcc \
+			-g -Wall -Werror \
 			-I${PWD}/kernel/build/include \
 			-o ${PWD}/shares/emulator \
 			-DYAKVM_BIN_ENTRY=${YAKVM_BIN_ENTRY} \
-			${PWD}/tool/emulator.c ${PWD}/tool/memory.c ${PWD}/tool/cpu.c
+			${PWD}/tool/emulator.c ${PWD}/tool/memory.c ${PWD}/tool/cpu.c ${PWD}/tool/arguments.c
 	@echo -e '\033[0;32m[*]\033[0mbuild the yakvm tool'
 
 driver:

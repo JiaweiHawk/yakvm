@@ -4,6 +4,7 @@
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <unistd.h>
+#include "arguments.h"
 #include "cpu.h"
 #include "emulator.h"
 #include "memory.h"
@@ -11,8 +12,11 @@
 
 int main(int argc, char *argv[])
 {
+        struct arguments args = {};
         struct vm vm;
         int yakvmfd, ret;
+
+        emulator_parse_arguments(&args, argc, argv);
 
         yakvmfd = open("/dev/yakvm", O_RDWR | O_CLOEXEC);
         if (yakvmfd < 0) {
@@ -29,7 +33,7 @@ int main(int argc, char *argv[])
                 goto close_yakvmfd;
         }
 
-        ret = yakvm_create_memory(&vm);
+        ret = yakvm_create_memory(&vm, args.bin);
         if (ret) {
                 log(LOG_ERR, "yakvm_create_memory() "
                     "failed with error %d", ret);

@@ -100,7 +100,7 @@ if __name__ == "__main__":
         qemu.execute("insmod /mnt/shares/yakvm.ko")
         qemu.runtil("initialize yakvm", timeout=args.timeout)
 
-        qemu.execute("/mnt/shares/emulator")
+        qemu.execute("/mnt/shares/emulator /mnt/shares/guest.bin")
         qemu.runtil("yakvm_create_vm() creates the kvm kvm-", timeout=args.timeout)
         qemu.runtil("yakvm_destroy_vm() destroys the kvm kvm-", timeout=args.timeout)
 

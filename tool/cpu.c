@@ -59,19 +59,19 @@ void yakvm_destroy_cpu(struct vm *vm)
 void yakvm_cpu_run(struct vm *vm)
 {
     assert(ioctl(vm->cpu.fd, YAKVM_RUN) == 0);
+    assert(vm->cpu.state->exit_code == (SVM_EXIT_EXCP_BASE + DB_VECTOR) &&
+           vm->cpu.state->cs == 0x0 && vm->cpu.state->rip == 0x4);
+
+    assert(ioctl(vm->cpu.fd, YAKVM_RUN) == 0);
     assert(vm->cpu.state->exit_code == SVM_EXIT_NPF &&
-           vm->cpu.state->exit_info_1 == (YAKVM_EXIT_NPF_INFO1_US |
-                                          YAKVM_EXIT_NPF_INFO1_ID |
+           vm->cpu.state->exit_info_1 == (YAKVM_EXIT_NPF_INFO1_RW |
+                                          YAKVM_EXIT_NPF_INFO1_US |
                                           YAKVM_EXIT_NPF_INFO1_NPT) &&
-           vm->cpu.state->exit_info_2 == 0x0);
+           vm->cpu.state->exit_info_2 == 0x7ffe);
     assert(ioctl(vm->vmfd, YAKVM_MMAP_PAGE,
            yakvm_page(vm->cpu.state->exit_info_2)) == 0);
 
     assert(ioctl(vm->cpu.fd, YAKVM_RUN) == 0);
     assert(vm->cpu.state->exit_code == (SVM_EXIT_EXCP_BASE + DB_VECTOR) &&
-           vm->cpu.state->cs == 0x0 && vm->cpu.state->rip == 0x2);
-
-    assert(ioctl(vm->cpu.fd, YAKVM_RUN) == 0);
-    assert(vm->cpu.state->exit_code == (SVM_EXIT_EXCP_BASE + DB_VECTOR) &&
-           vm->cpu.state->cs == 0x0 && vm->cpu.state->rip == 0x4);
+           vm->cpu.state->cs == 0x0 && vm->cpu.state->rip == 0x5);
 }

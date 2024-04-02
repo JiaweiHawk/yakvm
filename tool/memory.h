@@ -19,7 +19,7 @@
     #define YAKVM_EXIT_NPF_INFO1_NPT        (1ul << 32)
 
     #include "emulator.h"
-    int yakvm_create_memory(struct vm *vm);
+    int yakvm_create_memory(struct vm *vm, const char *bin);
     void yakvm_destroy_memory(struct vm *vm);
 
 #endif // __YAKVM_TOOL_MEMORY_H_
