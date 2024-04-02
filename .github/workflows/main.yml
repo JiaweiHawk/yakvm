@@ -19,6 +19,7 @@ jobs:
 
     - name: run the test suite
       run: |
+        sudo pip install unicorn
         sudo make test
 
     - uses: actions/upload-artifact@v3
