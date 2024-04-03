@@ -18,7 +18,7 @@ QEMU_OPTIONS                            := ${QEMU_OPTIONS} -no-reboot
 
 YAKVM_BIN_ENTRY                         := 0
 YAKVM_MEMORY                            := $(shell expr 1 \* 1024 \* 1024)
-YAKVM_IO_HAWK                           := 0
+YAKVM_PIO_HAWK                          := 0
 
 .PHONY: debug driver env kernel rootfs run srcs test tool
 
@@ -35,7 +35,7 @@ tool:
 			-nostdlib \
 			--entry=entry \
 			-Ttext ${YAKVM_BIN_ENTRY} \
-			-DYAKVM_IO_HAWK=${YAKVM_IO_HAWK} \
+			-DYAKVM_PIO_HAWK=${YAKVM_PIO_HAWK} \
 			-o ${PWD}/shares/guest.elf \
 			${PWD}/tool/guest.c
 	objcopy \
@@ -50,14 +50,14 @@ tool:
 			-o ${PWD}/shares/emulator \
 			-DYAKVM_BIN_ENTRY=${YAKVM_BIN_ENTRY} \
 			-DYAKVM_MEMORY=${YAKVM_MEMORY} \
-			-DYAKVM_IO_HAWK=${YAKVM_IO_HAWK} \
+			-DYAKVM_PIO_HAWK=${YAKVM_PIO_HAWK} \
 			${PWD}/tool/emulator.c ${PWD}/tool/memory.c ${PWD}/tool/cpu.c ${PWD}/tool/arguments.c ${PWD}/tool/devices.c
 	@echo -e '\033[0;32m[*]\033[0mbuild the yakvm tool'
 
 driver:
 	bear --append --output ${PWD}/compile_commands.json -- \
 		make \
-			EXTRA_CFLAGS="-DYAKVM_MEMORY=${YAKVM_MEMORY} -DYAKVM_IO_HAWK=${YAKVM_IO_HAWK}" \
+			EXTRA_CFLAGS="-DYAKVM_MEMORY=${YAKVM_MEMORY} -DYAKVM_PIO_HAWK=${YAKVM_PIO_HAWK}" \
 			-C ${PWD}/driver \
 			KDIR=${PWD}/kernel \
 			-j ${NPROC}
@@ -136,7 +136,7 @@ test:
 			--history=${PWD}/shares/setup.sh \
 			--entry=${YAKVM_BIN_ENTRY} \
 			--memory=${YAKVM_MEMORY} \
-			--pio=${YAKVM_IO_HAWK} \
+			--pio=${YAKVM_PIO_HAWK} \
 			--bin=${PWD}/shares/guest.bin && \
 		objdump -d -mi8086 -Maddr16,data16 ${PWD}/shares/guest.elf; \
 	else \

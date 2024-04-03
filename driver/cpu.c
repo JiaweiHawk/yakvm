@@ -364,7 +364,7 @@ static void yakvm_vcpu_init_vmcb(struct vcpu *vcpu)
          */
         yakvm_vmcb_set_intercept(vmcb, INTERCEPT_IOIO_PROT);
         vmcb->control.iopm_base_pa = virt_to_phys(vcpu->iopm);
-        set_bit(YAKVM_IO_HAWK, vcpu->iopm);
+        set_bit(YAKVM_PIO_HAWK, vcpu->iopm);
 
         /*
          * with Nested Paging Table(NPT) enabled, the nested page table,

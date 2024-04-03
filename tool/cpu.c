@@ -59,7 +59,7 @@ static void yakvm_cpu_handle_ioio(struct vm *vm)
         struct registers regs;
         uint32_t info = vm->cpu.state->exit_info_1;
         assert(svm_ioio_is_size8(info));
-        assert(svm_ioio_port(info) == YAKVM_IO_HAWK);
+        assert(svm_ioio_port(info) == YAKVM_PIO_HAWK);
 
         /*
          * IN/OUT instruction is described at

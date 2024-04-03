@@ -91,9 +91,9 @@ class VM:
         if (uc.mem_read(addr, len(VM.HLT_CODE)) == VM.HLT_CODE):
             uc.emu_stop()
         elif (uc.mem_read(addr, len(VM.OUT_CODE)) == VM.OUT_CODE):
-             vm.io_hawk_val = uc.reg_read(unicorn.x86_const.UC_X86_REG_DL)
+             vm.pio_hawk_val = uc.reg_read(unicorn.x86_const.UC_X86_REG_DL)
         elif (uc.mem_read(addr, len(VM.IN_CODE)) == VM.IN_CODE):
-             uc.reg_write(unicorn.x86_const.UC_X86_REG_AL, vm.io_hawk_val + 1)
+             uc.reg_write(unicorn.x86_const.UC_X86_REG_AL, vm.pio_hawk_val + 1)
 
     def __init__(self, args:argparse.Namespace, qemu:Qemu) -> None:
         self.entry = args.entry
@@ -108,8 +108,8 @@ class VM:
         self.unicorn.reg_write(unicorn.x86_const.UC_X86_REG_SP, 0)
         self.unicorn.reg_write(unicorn.x86_const.UC_X86_REG_IP, args.entry)
 
-        self.io_hawk_port = args.pio
-        self.io_hawk_val = None
+        self.pio_hawk_port = args.pio
+        self.pio_hawk_val = None
 
         with open(args.bin, "rb") as bin:
                 self.unicorn.mem_write(0, bin.read(args.memory))

@@ -3,11 +3,11 @@
 
 void entry(void)
 {
-        /* send 1 to *YAKVM_IO_HAWK* */
-        out8(YAKVM_IO_HAWK, 1);
+        /* send 1 to *YAKVM_PIO_HAWK* */
+        out8(YAKVM_PIO_HAWK, 1);
 
-        /* expect to receive 2 from *YAKVM_IO_HAWK* */
-        while(in8(YAKVM_IO_HAWK) != 2) {
+        /* expect to receive 2 from *YAKVM_PIO_HAWK* */
+        while(in8(YAKVM_PIO_HAWK) != 2) {
                 ;
         }
 
