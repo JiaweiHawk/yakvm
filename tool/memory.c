@@ -8,7 +8,7 @@
 #include "memory.h"
 #include "../include/memory.h"
 
-/* load the bin to *YAKVM_BIN_ENTRY* */
+/* load the bin to *YAKVM_ENTRY* */
 static int yakvm_load_bin(char *memory, const char *bin)
 {
         int fd, ret = 0;
@@ -36,7 +36,7 @@ static int yakvm_load_bin(char *memory, const char *bin)
                 goto close_fd;
         }
 
-        ret = read(fd, memory + YAKVM_BIN_ENTRY, stat.st_size);
+        ret = read(fd, memory + YAKVM_ENTRY, stat.st_size);
         if (ret == -1) {
                 ret = errno;
                 log(LOG_ERR, "read() failed with error %s",

@@ -12,7 +12,7 @@
                 uint64_t exit_info_2;            // vmcb->control.exit_info_2
 
                 /* used for #DB */
-                uint16_t cs;
+                uint64_t cs;
                 uint64_t rip;
         };
 
@@ -35,6 +35,7 @@
                 uint64_t r15;
                 uint64_t rip;
                 uint16_t cs;
+                uint16_t ss;
         };
 
         #ifdef __KERNEL__

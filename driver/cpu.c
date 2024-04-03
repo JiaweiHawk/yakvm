@@ -140,6 +140,7 @@ static int yakvm_vcpu_get_regs(struct vcpu *vcpu,
         regs.r15 = vcpu->gctx.r15;
         regs.rip = vcpu->gctx.vmcb->save.rip;
         regs.cs = vcpu->gctx.vmcb->save.cs.base;
+        regs.ss = vcpu->gctx.vmcb->save.ss.base;
 
         r = copy_to_user(dest, &regs, sizeof(regs));
         if (r) {
@@ -181,6 +182,7 @@ static int yakvm_vcpu_set_regs(struct vcpu *vcpu,
         vcpu->gctx.r15 = regs.r15;
         vcpu->gctx.vmcb->save.rip = regs.rip;
         vcpu->gctx.vmcb->save.cs.base = regs.cs;
+        vcpu->gctx.vmcb->save.ss.base = regs.ss;
 
         return 0;
 }

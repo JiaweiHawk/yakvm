@@ -146,7 +146,8 @@ static vm_fault_t yakvm_vm_vmm_fault(struct vm_fault *vmf)
 {
         int r;
         struct vm *vm = vmf->vma->vm_file->private_data;
-        struct page *page = yakvm_vmm_npt_create(vm->vmm, vmf->pgoff);
+        struct page *page = yakvm_vmm_npt_create(vm->vmm,
+                                vmf->address - vmf->vma->vm_start);
         if (IS_ERR(page)) {
                 r = PTR_ERR(page);
                 log(LOG_ERR, "yakvm_vmm_npt_create() "

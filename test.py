@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 # -*- coding:utf-8 -*-
+from __future__ import annotations
 import argparse
 import os
 import select
@@ -78,22 +79,29 @@ class Qemu:
 
 class VM:
 
-    INVALID_EIP = (1 << 64) - 1
-    HLT_CODE = "\xf4"
-    IN_CODE = "\xec"
-    OUT_CODE = "\xee"
+    UNREACHABLE_EIP = (1 << 64) - 1
+    HLT_CODE = bytearray(b"\xf4")
+    IN_CODE = bytearray(b"\xec")
+    OUT_CODE = bytearray(b"\xee")
 
-    def __single_step(uc:unicorn.Uc, addr:int, size:int, vm):
+    def __single_step(uc:unicorn.Uc, addr:int, size:int, vm:VM):
         if (not addr == vm.entry):
-                vm.qemu.runtil("guest executes instruction at 0:%s"%(hex(addr)),
-                            timeout=args.timeout)
-
-        if (uc.mem_read(addr, len(VM.HLT_CODE)) == VM.HLT_CODE):
+                vm.qemu.runtil("guest executes instruction at %s, "
+                               "opcode = %s"%(hex(addr),
+                               hex(uc.mem_read(addr, 1)[0])[2:]),
+                               timeout=args.timeout)
+        if (uc.mem_read(addr, size) == VM.HLT_CODE):
             uc.emu_stop()
-        elif (uc.mem_read(addr, len(VM.OUT_CODE)) == VM.OUT_CODE):
-             vm.pio_hawk_val = uc.reg_read(unicorn.x86_const.UC_X86_REG_DL)
-        elif (uc.mem_read(addr, len(VM.IN_CODE)) == VM.IN_CODE):
-             uc.reg_write(unicorn.x86_const.UC_X86_REG_AL, vm.pio_hawk_val + 1)
+        elif (uc.mem_read(addr, size) == VM.OUT_CODE):
+            assert(uc.reg_read(unicorn.x86_const.UC_X86_REG_DL) == vm.pio_hawk_port)
+            uc.emu_stop()
+            vm.pio_hawk_val = uc.reg_read(unicorn.x86_const.UC_X86_REG_AL)
+            uc.emu_start(addr + size, VM.UNREACHABLE_EIP, timeout=10 * 1000)
+        elif (uc.mem_read(addr, size) == VM.IN_CODE):
+            assert(uc.reg_read(unicorn.x86_const.UC_X86_REG_DL) == vm.pio_hawk_port)
+            uc.emu_stop()
+            uc.reg_write(unicorn.x86_const.UC_X86_REG_AL, 2)
+            uc.emu_start(addr + size, VM.UNREACHABLE_EIP, timeout=10 * 1000)
 
     def __init__(self, args:argparse.Namespace, qemu:Qemu) -> None:
         self.entry = args.entry
@@ -105,14 +113,15 @@ class VM:
         self.unicorn.mem_map(0, args.memory)
 
         # set registers
-        self.unicorn.reg_write(unicorn.x86_const.UC_X86_REG_SP, 0)
-        self.unicorn.reg_write(unicorn.x86_const.UC_X86_REG_IP, args.entry)
+        self.unicorn.reg_write(unicorn.x86_const.UC_X86_REG_CS, args.entry // 0x10)
+        self.unicorn.reg_write(unicorn.x86_const.UC_X86_REG_SS, args.stack // 0x10)
+        self.unicorn.reg_write(unicorn.x86_const.UC_X86_REG_SP, 0x1000)
 
         self.pio_hawk_port = args.pio
         self.pio_hawk_val = None
 
         with open(args.bin, "rb") as bin:
-                self.unicorn.mem_write(0, bin.read(args.memory))
+                self.unicorn.mem_write(args.entry, bin.read(args.memory))
 
         # trace all instructions
         self.unicorn.hook_add(unicorn.UC_HOOK_CODE, VM.__single_step, self)
@@ -120,7 +129,8 @@ class VM:
         self.qemu = qemu
 
     def check(self):
-        self.unicorn.emu_start(self.entry, self.INVALID_EIP, timeout=60)
+        # emulate for the 10 seconds
+        self.unicorn.emu_start(self.entry, VM.UNREACHABLE_EIP, timeout=10 * 1000)
 
 if __name__ == "__main__":
     ret = 0
@@ -141,7 +151,10 @@ if __name__ == "__main__":
                         help="max timeout for receiving from guest")
     parser.add_argument("--entry", action="store",
                         type=int, default=0,
-                        help="entry address for guest bin")
+                        help="vm entry address")
+    parser.add_argument("--stack", action="store",
+                        type=int, default=0,
+                        help="vm stack address")
     parser.add_argument("--memory", action="store",
                         type=int, default=2 * 1024 * 1024,
                         help="guest memory size")

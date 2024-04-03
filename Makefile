@@ -16,8 +16,9 @@ QEMU_OPTIONS                            := ${QEMU_OPTIONS} -enable-kvm
 QEMU_OPTIONS                            := ${QEMU_OPTIONS} -nographic
 QEMU_OPTIONS                            := ${QEMU_OPTIONS} -no-reboot
 
-YAKVM_BIN_ENTRY                         := 0
-YAKVM_MEMORY                            := $(shell expr 1 \* 1024 \* 1024)
+YAKVM_MEMORY                            := $(shell python3 -c "print(1 * 1024 * 1024)")
+YAKVM_ENTRY                             := $(shell python3 -c "print(1 * 4096)")
+YAKVM_STACK                             := $(shell python3 -c "print(2 * 4096)")
 YAKVM_PIO_HAWK                          := 0
 
 .PHONY: debug driver env kernel rootfs run srcs test tool
@@ -29,12 +30,12 @@ tool:
 	bear --append --output ${PWD}/compile_commands.json -- \
 		gcc \
 			-g -Wall -Werror \
-			-march=i686 -m16 -ffreestanding \
+			-m16 -ffreestanding \
 			-nostdlib \
 			-no-pie \
 			-nostdlib \
 			--entry=entry \
-			-Ttext ${YAKVM_BIN_ENTRY} \
+			-Ttext $(shell python3 -c "print(hex(${YAKVM_ENTRY}))") \
 			-DYAKVM_PIO_HAWK=${YAKVM_PIO_HAWK} \
 			-o ${PWD}/shares/guest.elf \
 			${PWD}/tool/guest.c
@@ -48,7 +49,8 @@ tool:
 			-g -Wall -Werror \
 			-I${PWD}/kernel/build/include \
 			-o ${PWD}/shares/emulator \
-			-DYAKVM_BIN_ENTRY=${YAKVM_BIN_ENTRY} \
+			-DYAKVM_ENTRY=${YAKVM_ENTRY} \
+			-DYAKVM_STACK=${YAKVM_STACK} \
 			-DYAKVM_MEMORY=${YAKVM_MEMORY} \
 			-DYAKVM_PIO_HAWK=${YAKVM_PIO_HAWK} \
 			${PWD}/tool/emulator.c ${PWD}/tool/memory.c ${PWD}/tool/cpu.c ${PWD}/tool/arguments.c ${PWD}/tool/devices.c
@@ -134,7 +136,8 @@ test:
 		${PWD}/test.py \
 			--command='''${QEMU} ${QEMU_OPTIONS}''' \
 			--history=${PWD}/shares/setup.sh \
-			--entry=${YAKVM_BIN_ENTRY} \
+			--entry=${YAKVM_ENTRY} \
+			--stack=${YAKVM_STACK} \
 			--memory=${YAKVM_MEMORY} \
 			--pio=${YAKVM_PIO_HAWK} \
 			--bin=${PWD}/shares/guest.bin && \

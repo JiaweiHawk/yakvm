@@ -35,7 +35,21 @@ int yakvm_create_cpu(struct vm *vm)
             goto close_cpufd;
     }
 
-    regs.rip = YAKVM_BIN_ENTRY;
+    /*
+     * Normally within real mode, the segment base-address is formed by
+     * shifting the selector value left four bits. However, immediately
+     * following RESET or INIT, the segment base-address is not formed
+     * by left-shifting the selector until the selector register is
+     * loaded by software according to "14.1.5" on page 482 at
+     * https://www.amd.com/content/dam/amd/en/documents/processor-tech-docs/programmer-references/24593.pdf
+     */
+    assert(ioctl(vm->cpu.fd, YAKVM_GET_REGS, &regs) == 0);
+    assert(YAKVM_ENTRY % PAGE_SIZE == 0);
+    regs.cs = YAKVM_ENTRY;
+    regs.rip = 0;
+    assert(YAKVM_STACK % PAGE_SIZE == 0);
+    regs.ss = YAKVM_STACK;
+    regs.rsp = 0x1000;
     assert(ioctl(vm->cpu.fd, YAKVM_SET_REGS, &regs) == 0);
 
     vm->cpu.mode = RUNNING;
@@ -92,8 +106,11 @@ static int yakvm_cpu_handle_exit(struct vm *vm)
                         break;
 
                 case SVM_EXIT_EXCP_BASE + DB_VECTOR:
-                        log(LOG_INFO, "guest executes instruction at %#x:%#lx",
-                            vm->cpu.state->cs, vm->cpu.state->rip);
+                        log(LOG_INFO, "guest executes instruction at "
+                            "%#lx, opcode = %hhx", vm->cpu.state->cs +
+                                                   vm->cpu.state->rip,
+                            vm->memory[vm->cpu.state->cs +
+                                       vm->cpu.state->rip]);
                         break;
 
                 case SVM_EXIT_HLT:
