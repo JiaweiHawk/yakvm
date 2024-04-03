@@ -131,3 +131,4 @@ For MMIO, remove the **_PAGE_PRESENT** flag from the corresponding MMIO memory's
 - [yifengyou/learn-kvm](https://github.com/yifengyou/learn-kvm/blob/master/docs/虚拟化实现技术/虚拟化实现技术.md#amd虚拟化)
 - [eliaskousk/vmrun](https://github.com/eliaskousk/vmrun/tree/dev)
 - [Martin Radev/mini-svm](http://varko.xyz/mini-svm-chapter-1.html)
+- [AMD64 Technology/AMD64 Architecture Programmer’s Manual Volume 3: General-Purpose and System Instructions](https://www.amd.com/content/dam/amd/en/documents/processor-tech-docs/programmer-references/24594.pdf)

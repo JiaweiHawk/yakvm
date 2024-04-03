@@ -8,9 +8,30 @@
          */
         __asm__(".code16gcc\n");
 
-        #define hlt() \
-                do { \
-                        asm volatile("hlt"); \
-                } while(0)
+        static inline __attribute__((always_inline)) void hlt(void)
+        {
+                asm volatile("hlt");
+        }
+
+        #include <stdint.h>
+        static inline __attribute__((always_inline))
+        void out8(uint16_t port, uint8_t val)
+        {
+                asm volatile(
+                        "outb %0, %1\n\t"
+                        :
+                        : "a"(val), "d"(port));
+        }
+
+        static inline __attribute__((always_inline))
+        uint8_t in8(uint16_t port)
+        {
+                uint8_t val;
+                asm volatile(
+                        "inb %1, %0\n\t"
+                        : "=a"(val)
+                        : "d"(port));
+                return val;
+        }
 
 #endif

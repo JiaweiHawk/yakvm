@@ -2,6 +2,8 @@
 #include <asm/msr.h>
 #include <asm/page_types.h>
 #include <asm/processor-flags.h>
+#include <asm-generic/bitops/instrumented-atomic.h>
+#include <asm-generic/getorder.h>
 #include <linux/bitops.h>
 #include <linux/gfp.h>
 #include <linux/gfp_types.h>
@@ -356,6 +358,15 @@ static void yakvm_vcpu_init_vmcb(struct vcpu *vcpu)
         yakvm_vmcb_set_intercept(vmcb, INTERCEPT_HLT);
 
         /*
+         * Enable IOIO intercepts to emulate the device
+         * according to "15.10" on page 515 at
+         * https://www.amd.com/content/dam/amd/en/documents/processor-tech-docs/programmer-references/24593.pdf
+         */
+        yakvm_vmcb_set_intercept(vmcb, INTERCEPT_IOIO_PROT);
+        vmcb->control.iopm_base_pa = virt_to_phys(vcpu->iopm);
+        set_bit(YAKVM_IO_HAWK, vcpu->iopm);
+
+        /*
          * with Nested Paging Table(NPT) enabled, the nested page table,
          * residing in system physical memory and pointed to by nCR3,
          * mapping guest physical addresses to system physical addresses
@@ -391,7 +402,7 @@ static void yakvm_vcpu_init_vmcb(struct vcpu *vcpu)
 /* create the vcpu */
 struct vcpu* yakvm_create_vcpu(struct vm *vm)
 {
-        struct page *state, *gvmcb, *hvmcb, *hsave;
+        struct page *state, *gvmcb, *hvmcb, *hsave, *iopm;
         struct vcpu *vcpu;
         void *ret;
 
@@ -449,17 +460,33 @@ struct vcpu* yakvm_create_vcpu(struct vm *vm)
                 goto free_hsave;
         }
 
+        /*
+         * The I/O Permissions Map(iopm) occupies 12 Kbytes of
+         * contiguous physical memory and must be aligned on a
+         * 4-Kbyte boundary according to "15.10.1" on page 515 at
+         * https://www.amd.com/content/dam/amd/en/documents/processor-tech-docs/programmer-references/24593.pdf
+         */
+        iopm = alloc_pages(GFP_KERNEL_ACCOUNT | __GFP_ZERO, get_order(12 KiB));
+        if (!iopm) {
+                log(LOG_ERR, "alloc_page() failed");
+                ret = ERR_PTR(-ENOMEM);
+                goto free_state;
+        }
+
         /* initialize the vcpu */
         mutex_init(&vcpu->lock);
         vcpu->gctx.vmcb = page_address(gvmcb);
         vcpu->hctx.vmcb = page_address(hvmcb);
         vcpu->hsave = page_address(hsave);
+        vcpu->iopm = page_address(iopm);
         vcpu->state = page_address(state);
         vcpu->vm = vm;
         yakvm_vcpu_init_vmcb(vcpu);
 
         return vcpu;
 
+free_state:
+        __free_page(state);
 free_hsave:
         __free_page(hsave);
 free_hvmcb:
@@ -476,6 +503,7 @@ out:
 void yakvm_destroy_vcpu(struct vcpu *vcpu)
 {
         free_page((unsigned long)vcpu->state);
+        free_pages((unsigned long)vcpu->iopm, get_order(12 KiB));
         free_page((unsigned long)vcpu->hsave);
         free_page((unsigned long)vcpu->hctx.vmcb);
         free_page((unsigned long)vcpu->gctx.vmcb);

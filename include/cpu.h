@@ -2,7 +2,6 @@
 
         #define __YAKVM_CPU_H_
 
-
         /* for userspace and kernel to share vcpu state data */
         #ifndef __KERNEL__
                 #include <stdint.h>
@@ -370,6 +369,7 @@
                         struct context gctx;
                         struct context hctx;
                         void *hsave;
+                        void *iopm;
                         struct state *state;
                         struct vm *vm;
                 };

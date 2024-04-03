@@ -80,6 +80,8 @@ class VM:
 
     INVALID_EIP = (1 << 64) - 1
     HLT_CODE = "\xf4"
+    IN_CODE = "\xec"
+    OUT_CODE = "\xee"
 
     def __single_step(uc:unicorn.Uc, addr:int, size:int, vm):
         if (not addr == vm.entry):
@@ -88,6 +90,10 @@ class VM:
 
         if (uc.mem_read(addr, len(VM.HLT_CODE)) == VM.HLT_CODE):
             uc.emu_stop()
+        elif (uc.mem_read(addr, len(VM.OUT_CODE)) == VM.OUT_CODE):
+             vm.io_hawk_val = uc.reg_read(unicorn.x86_const.UC_X86_REG_DL)
+        elif (uc.mem_read(addr, len(VM.IN_CODE)) == VM.IN_CODE):
+             uc.reg_write(unicorn.x86_const.UC_X86_REG_AL, vm.io_hawk_val + 1)
 
     def __init__(self, args:argparse.Namespace, qemu:Qemu) -> None:
         self.entry = args.entry
@@ -102,6 +108,9 @@ class VM:
         self.unicorn.reg_write(unicorn.x86_const.UC_X86_REG_SP, 0)
         self.unicorn.reg_write(unicorn.x86_const.UC_X86_REG_IP, args.entry)
 
+        self.io_hawk_port = args.pio
+        self.io_hawk_val = None
+
         with open(args.bin, "rb") as bin:
                 self.unicorn.mem_write(0, bin.read(args.memory))
 
@@ -111,7 +120,7 @@ class VM:
         self.qemu = qemu
 
     def check(self):
-        self.unicorn.emu_start(self.entry, self.INVALID_EIP)
+        self.unicorn.emu_start(self.entry, self.INVALID_EIP, timeout=60)
 
 if __name__ == "__main__":
     ret = 0
@@ -136,6 +145,9 @@ if __name__ == "__main__":
     parser.add_argument("--memory", action="store",
                         type=int, default=2 * 1024 * 1024,
                         help="guest memory size")
+    parser.add_argument("--pio", action="store",
+                        type=int, default=0,
+                        help="port for device IO_HAWK")
     args = parser.parse_args()
 
     try:

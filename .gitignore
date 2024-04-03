@@ -42,6 +42,8 @@ tool/*
 !tool/arguments.h
 !tool/cpu.c
 !tool/cpu.h
+!tool/devices.c
+!tool/devices.h
 !tool/emulator.c
 !tool/guest.c
 !tool/guest.h

@@ -4,6 +4,7 @@
 #include <sys/mman.h>
 #include <unistd.h>
 #include "cpu.h"
+#include "devices.h"
 #include "memory.h"
 #include "emulator.h"
 #include "../include/vm.h"
@@ -53,6 +54,35 @@ void yakvm_destroy_cpu(struct vm *vm)
     assert(!close(vm->cpu.fd));
 }
 
+static void yakvm_cpu_handle_ioio(struct vm *vm)
+{
+        struct registers regs;
+        uint32_t info = vm->cpu.state->exit_info_1;
+        assert(svm_ioio_is_size8(info));
+        assert(svm_ioio_port(info) == YAKVM_IO_HAWK);
+
+        /*
+         * IN/OUT instruction is described at
+         * "IN" on page 182 and "OUT" on page "267" at
+         * https://www.amd.com/content/dam/amd/en/documents/processor-tech-docs/programmer-references/24594.pdf
+         */
+        assert(ioctl(vm->cpu.fd, YAKVM_GET_REGS, &regs) == 0);
+        if (svm_ioio_type(info) == SVM_IOIO_TYPE_IN) {
+                regs.rax = yakvm_device_io_get();
+        } else {
+                yakvm_device_io_set(regs.rax);
+        }
+
+        /*
+         * The rip of the instruction following the IN/OUT is saved in
+         * EXITINFO2, so that the VMM can easily resume the guest after
+         * I/O emulation according to "15.10.2" on page 516 at
+         * https://www.amd.com/content/dam/amd/en/documents/processor-tech-docs/programmer-references/24593.pdf
+         */
+        regs.rip = vm->cpu.state->exit_info_2;
+        assert(ioctl(vm->cpu.fd, YAKVM_SET_REGS, &regs) == 0);
+}
+
 static int yakvm_cpu_handle_exit(struct vm *vm)
 {
         switch (vm->cpu.state->exit_code) {
@@ -68,6 +98,10 @@ static int yakvm_cpu_handle_exit(struct vm *vm)
 
                 case SVM_EXIT_HLT:
                         vm->cpu.mode = HLT;
+                        break;
+
+                case SVM_EXIT_IOIO:
+                        yakvm_cpu_handle_ioio(vm);
                         break;
 
                 default:
