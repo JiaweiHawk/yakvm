@@ -87,7 +87,7 @@ kernel:
 rootfs:
 	if [ ! -d ${PWD}/rootfs ]; then \
 		sudo apt update; \
-		sudo apt-get install -y debootstrap; \
+		sudo apt-get install -y debootstrap libc6-dev-i386; \
 		pip install unicorn; \
 		sudo debootstrap \
 			--components=main,contrib,non-free,non-free-firmware \
