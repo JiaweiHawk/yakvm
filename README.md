@@ -117,7 +117,7 @@ Considering there are two ways to access devices under x86 architecture: **Port 
 
 ### PIO
 
-PIO virtualization can be achieved by configuring the **vmcb** to intercept PIO.
+PIO virtualization can be achieved by configuring the **vmcb** as [yakvm_vcpu_init_vmcb()](./driver/cpu.c) to intercept PIO as [yakvm_cpu_handle_ioio()](./tool/cpu.c).
 
 ### MMIO
 
