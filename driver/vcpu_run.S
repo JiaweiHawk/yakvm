@@ -54,23 +54,23 @@ vmrun %rax
 vmsave %rax
 
 /* save guest registers */
-pop %rdi /* load vcpu->gctx */
-mov %rbx, YAKVM_VCPU_CONTEXT_RBX_OFF(%rdi)
-mov %rcx, YAKVM_VCPU_CONTEXT_RCX_OFF(%rdi)
-mov %rdx, YAKVM_VCPU_CONTEXT_RDX_OFF(%rdi)
-mov %rdi, YAKVM_VCPU_CONTEXT_RDI_OFF(%rdi)
-mov %rsi, YAKVM_VCPU_CONTEXT_RSI_OFF(%rdi)
-mov %rbp, YAKVM_VCPU_CONTEXT_RBP_OFF(%rdi)
-mov %r8, YAKVM_VCPU_CONTEXT_R8_OFF(%rdi)
-mov %r9, YAKVM_VCPU_CONTEXT_R9_OFF(%rdi)
-mov %r10, YAKVM_VCPU_CONTEXT_R10_OFF(%rdi)
-mov %r11, YAKVM_VCPU_CONTEXT_R11_OFF(%rdi)
-mov %r12, YAKVM_VCPU_CONTEXT_R12_OFF(%rdi)
-mov %r13, YAKVM_VCPU_CONTEXT_R13_OFF(%rdi)
-mov %r14, YAKVM_VCPU_CONTEXT_R14_OFF(%rdi)
-mov %r15, YAKVM_VCPU_CONTEXT_R15_OFF(%rdi)
+pop %rax /* load vcpu->gctx */
+mov %rbx, YAKVM_VCPU_CONTEXT_RBX_OFF(%rax)
+mov %rcx, YAKVM_VCPU_CONTEXT_RCX_OFF(%rax)
+mov %rdx, YAKVM_VCPU_CONTEXT_RDX_OFF(%rax)
+mov %rdi, YAKVM_VCPU_CONTEXT_RDI_OFF(%rax)
+mov %rsi, YAKVM_VCPU_CONTEXT_RSI_OFF(%rax)
+mov %rbp, YAKVM_VCPU_CONTEXT_RBP_OFF(%rax)
+mov %r8, YAKVM_VCPU_CONTEXT_R8_OFF(%rax)
+mov %r9, YAKVM_VCPU_CONTEXT_R9_OFF(%rax)
+mov %r10, YAKVM_VCPU_CONTEXT_R10_OFF(%rax)
+mov %r11, YAKVM_VCPU_CONTEXT_R11_OFF(%rax)
+mov %r12, YAKVM_VCPU_CONTEXT_R12_OFF(%rax)
+mov %r13, YAKVM_VCPU_CONTEXT_R13_OFF(%rax)
+mov %r14, YAKVM_VCPU_CONTEXT_R14_OFF(%rax)
+mov %r15, YAKVM_VCPU_CONTEXT_R15_OFF(%rax)
 
-/* load host registers */
+/* load host registers except %rdi and %rdx */
 pop %rsi        /* load vcpu->hctx */
 mov YAKVM_VCPU_CONTEXT_R15_OFF(%rsi), %r15
 mov YAKVM_VCPU_CONTEXT_R14_OFF(%rsi), %r14
