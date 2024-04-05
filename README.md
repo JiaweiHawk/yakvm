@@ -121,7 +121,7 @@ PIO virtualization can be achieved by configuring the **vmcb** as [yakvm_vcpu_in
 
 ### MMIO
 
-For MMIO, remove the **_PAGE_PRESENT** flag from the corresponding MMIO memory's **Nested Paging Table** entry to intercept MMIO.
+For MMIO, remove the **_PAGE_PRESENT** flag from the corresponding MMIO memory's **Nested Paging Table** entry as [yakvm_vmm_npt_create()](./driver/memory.c) to intercept MMIO as [yakvm_vcpu_handle_mmio()](./tool/cpu.c).
 
 # Reference
 

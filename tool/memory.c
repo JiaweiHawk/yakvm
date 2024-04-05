@@ -9,7 +9,7 @@
 #include "../include/memory.h"
 
 /* load the bin to *YAKVM_ENTRY* */
-static int yakvm_load_bin(char *memory, const char *bin)
+static int yakvm_load_bin(uint8_t *memory, const char *bin)
 {
         int fd, ret = 0;
         struct stat stat;

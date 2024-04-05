@@ -83,6 +83,24 @@ class VM:
     HLT_CODE = bytearray(b"\xf4")
     IN_CODE = bytearray(b"\xec")
     OUT_CODE = bytearray(b"\xee")
+    MMIO_READ_CODE = bytearray(b"\x67\x8a\x02")
+    MMIO_WRITE_CODE = bytearray(b"\x67\x88\x02")
+
+    def __emulate_mmio(uc:unicorn.Uc, access:int, addr:int, size:int, value:int, vm:VM):
+        assert(addr == vm.mmio_hawk_addr)
+        assert(size == 1)
+        ip = uc.reg_read(unicorn.x86_const.UC_X86_REG_IP)
+
+        uc.emu_stop()
+        if (access == unicorn.UC_MEM_WRITE_UNMAPPED):
+            assert(uc.mem_read(ip, len(VM.MMIO_WRITE_CODE)) == VM.MMIO_WRITE_CODE)
+            vm.mmio_hawk_val = uc.reg_read(unicorn.x86_const.UC_X86_REG_AL)
+        elif (access == unicorn.UC_MEM_READ_UNMAPPED):
+            assert(uc.mem_read(ip, len(VM.MMIO_READ_CODE)) == VM.MMIO_READ_CODE)
+            uc.reg_write(unicorn.x86_const.UC_X86_REG_AL, vm.mmio_hawk_val - 1)
+        else:
+            assert(False)
+        uc.emu_start(ip + 3, VM.UNREACHABLE_EIP, timeout=10 * 1000)
 
     def __single_step(uc:unicorn.Uc, addr:int, size:int, vm:VM):
         if (not addr == vm.entry):
@@ -110,21 +128,27 @@ class VM:
         self.unicorn = unicorn.Uc(unicorn.UC_ARCH_X86, unicorn.UC_MODE_16)
 
         # map vm memory
-        self.unicorn.mem_map(0, args.memory)
+        assert(args.mmio % 4096 == 0)
+        self.unicorn.mem_map(args.mmio + 4096, args.memory)
 
         # set registers
-        self.unicorn.reg_write(unicorn.x86_const.UC_X86_REG_CS, args.entry // 0x10)
         self.unicorn.reg_write(unicorn.x86_const.UC_X86_REG_SS, args.stack // 0x10)
         self.unicorn.reg_write(unicorn.x86_const.UC_X86_REG_SP, 0x1000)
 
         self.pio_hawk_port = args.pio
         self.pio_hawk_val = None
+        self.mmio_hawk_addr = args.mmio
+        self.mmio_hawk_val = None
 
         with open(args.bin, "rb") as bin:
-                self.unicorn.mem_write(args.entry, bin.read(args.memory))
+            assert((args.mmio / 4096) < (args.entry / 4096))
+            self.unicorn.mem_write(args.entry, bin.read(args.memory))
 
         # trace all instructions
         self.unicorn.hook_add(unicorn.UC_HOOK_CODE, VM.__single_step, self)
+        # trace mmio instructions
+        self.unicorn.hook_add(unicorn.UC_HOOK_MEM_READ_UNMAPPED | unicorn.UC_HOOK_MEM_WRITE_UNMAPPED,
+                              VM.__emulate_mmio, self)
 
         self.qemu = qemu
 
@@ -160,7 +184,10 @@ if __name__ == "__main__":
                         help="guest memory size")
     parser.add_argument("--pio", action="store",
                         type=int, default=0,
-                        help="port for device IO_HAWK")
+                        help="port for device PIO_HAWK")
+    parser.add_argument("--mmio", action="store",
+                        type=int, default=0,
+                        help="memory address for device MMIO_HAWK")
     args = parser.parse_args()
 
     try:

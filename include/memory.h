@@ -49,9 +49,10 @@
         }
 
         #include <asm/io.h>
+        #define PHYS_ADDR_MASK      ((1ul << 52) - 1)
         /* transfer physical base address to its page physical address */
         static inline unsigned long yakvm_vmm_page(unsigned long pa) {
-            return pa & PAGE_MASK;
+            return (pa & PHYS_ADDR_MASK) & PAGE_MASK;
         }
         /* transfer physical base address to virtual address */
         static inline void *yakvm_vmm_phys_to_virt(unsigned long pa)
@@ -60,7 +61,7 @@
         }
 
         struct page *yakvm_vmm_npt_create(struct vmm *vmm,
-                                          unsigned long gpa);
+                                          unsigned long gpa, bool is_mmio);
         struct vmm *yakvm_create_vmm(struct vm *vm);
         void yakvm_destroy_vmm(struct vmm *vmm);
     #else // __KERNEL__

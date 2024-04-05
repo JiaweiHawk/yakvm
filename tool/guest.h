@@ -15,7 +15,7 @@
 
         #include <stdint.h>
         static inline __attribute__((always_inline))
-        void out8(uint16_t port, uint8_t val)
+        void pio_out8(uint16_t port, uint8_t val)
         {
                 asm volatile(
                         "outb %0, %1\n\t"
@@ -24,13 +24,33 @@
         }
 
         static inline __attribute__((always_inline))
-        uint8_t in8(uint16_t port)
+        uint8_t pio_in8(uint16_t port)
         {
                 uint8_t val;
                 asm volatile(
                         "inb %1, %0\n\t"
                         : "=a"(val)
                         : "d"(port));
+                return val;
+        }
+
+        static inline __attribute__((always_inline))
+        void mmio_out8(uint32_t addr, uint8_t val)
+        {
+                asm volatile(
+                        "movb %0, (%1)\n\t"
+                        :
+                        : "a"(val), "d"(addr));
+        }
+
+        static inline __attribute__((always_inline))
+        uint8_t mmio_in8(uint32_t addr)
+        {
+                uint8_t val;
+                asm volatile(
+                        "movb (%1), %0\n\t"
+                        : "=a"(val)
+                        : "d"(addr));
                 return val;
         }
 

@@ -97,7 +97,7 @@ out:
 /* map the gpa to a host physical page */
 static int yakvm_vm_ioctl_mmap_page(struct vm *vm, unsigned long gpa)
 {
-        struct page *page = yakvm_vmm_npt_create(vm->vmm, gpa);
+        struct page *page = yakvm_vmm_npt_create(vm->vmm, gpa, false);
         if (IS_ERR(page)) {
                 int r = PTR_ERR(page);
                 log(LOG_ERR, "yakvm_vmm_npt_create() "
@@ -147,7 +147,7 @@ static vm_fault_t yakvm_vm_vmm_fault(struct vm_fault *vmf)
         int r;
         struct vm *vm = vmf->vma->vm_file->private_data;
         struct page *page = yakvm_vmm_npt_create(vm->vmm,
-                                vmf->address - vmf->vma->vm_start);
+                                vmf->address - vmf->vma->vm_start, false);
         if (IS_ERR(page)) {
                 r = PTR_ERR(page);
                 log(LOG_ERR, "yakvm_vmm_npt_create() "

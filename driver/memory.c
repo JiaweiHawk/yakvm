@@ -12,11 +12,12 @@
 #include "../include/yakvm.h"
 
 /* create the pte for @gpa */
-struct page *yakvm_vmm_npt_create(struct vmm *vmm, unsigned long gpa)
+struct page *yakvm_vmm_npt_create(struct vmm *vmm, unsigned long gpa,
+                                  bool is_mmio)
 {
     struct table *table;
     struct page *page;
-    int r;
+    int r, index;
     /*
      * the cr3 layout is described in "5.3.2" on page 140 at
      * https://www.amd.com/content/dam/amd/en/documents/processor-tech-docs/programmer-references/24593.pdf.
@@ -24,7 +25,7 @@ struct page *yakvm_vmm_npt_create(struct vmm *vmm, unsigned long gpa)
     unsigned long entry = vmm->ncr3;
 
     for (int level = PML4T; level >= PT; --level) {
-        int index = table_index(gpa, level);
+        index = table_index(gpa, level);
         table = yakvm_vmm_phys_to_virt(entry);
         entry = table->entrys[index];
         if (!entry) {
@@ -53,7 +54,17 @@ struct page *yakvm_vmm_npt_create(struct vmm *vmm, unsigned long gpa)
         } else if (level == PT) {
             r = -EEXIST;
         }
-        assert((entry & _PAGE_PRESENT) && (entry & _PAGE_RW));
+        assert((entry & _PAGE_PRESENT) && (entry & _PAGE_RW) && (entry & _PAGE_USER));
+    }
+
+    if (is_mmio) {
+	    /*
+	     * remove *_PAGE_PRESENT* bit to trigger a *NPF*
+         * with exitinfo1.p to intercept the mmio
+         * operations according to "15.25.6" on page 551 at
+         * https://www.amd.com/content/dam/amd/en/documents/processor-tech-docs/programmer-references/24593.pdf.
+	     */
+        table->entrys[index] &= ~(_PAGE_PRESENT);
     }
 
     return pfn_to_page(entry >> PAGE_SHIFT);
@@ -67,6 +78,7 @@ struct vmm *yakvm_create_vmm(struct vm *vm)
     int r;
     struct vmm *vmm;
     struct page *pml4t;
+    struct page *mmio;
 
     /*
      * nested paging uses the same paging mode as the host used when
@@ -96,8 +108,18 @@ struct vmm *yakvm_create_vmm(struct vm *vm)
     vmm->ncr3 = page_to_phys(pml4t);
     vmm->vm = vm;
 
+    mmio = yakvm_vmm_npt_create(vmm, YAKVM_MMIO_HAWK, true);
+    if (IS_ERR(mmio)) {
+        r = PTR_ERR(mmio);
+        log(LOG_ERR, "yakvm_vmm_npt_create() "
+            "failed with error code %x", r);
+        goto free_vmm;
+    }
+
     return vmm;
 
+free_vmm:
+    kfree(vmm);
 free_pml4:
     __free_page(pml4t);
 out:
@@ -109,7 +131,7 @@ static void yakvm_vmm_destroy_table(struct table *table, int level)
     for (int idx = 0; idx < PTRS_PER_PAGE; ++idx) {
         unsigned long entry = table->entrys[idx];
         if (entry) {
-            assert((entry & _PAGE_PRESENT) && (entry & _PAGE_RW));
+            assert((entry & _PAGE_USER) && (entry & _PAGE_RW));
             if (level == PT) {
                 free_page((unsigned long)yakvm_vmm_phys_to_virt(entry));
             } else {

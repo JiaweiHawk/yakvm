@@ -20,6 +20,7 @@ YAKVM_MEMORY                            := $(shell python3 -c "print(1 * 1024 * 
 YAKVM_ENTRY                             := $(shell python3 -c "print(1 * 4096)")
 YAKVM_STACK                             := $(shell python3 -c "print(2 * 4096)")
 YAKVM_PIO_HAWK                          := 0
+YAKVM_MMIO_HAWK                         := 0
 
 .PHONY: debug driver env kernel rootfs run srcs test tool
 
@@ -37,6 +38,7 @@ tool:
 			--entry=entry \
 			-Ttext $(shell python3 -c "print(hex(${YAKVM_ENTRY}))") \
 			-DYAKVM_PIO_HAWK=${YAKVM_PIO_HAWK} \
+			-DYAKVM_MMIO_HAWK=${YAKVM_MMIO_HAWK} \
 			-o ${PWD}/shares/guest.elf \
 			${PWD}/tool/guest.c
 	objcopy \
@@ -53,13 +55,14 @@ tool:
 			-DYAKVM_STACK=${YAKVM_STACK} \
 			-DYAKVM_MEMORY=${YAKVM_MEMORY} \
 			-DYAKVM_PIO_HAWK=${YAKVM_PIO_HAWK} \
+			-DYAKVM_MMIO_HAWK=${YAKVM_MMIO_HAWK} \
 			${PWD}/tool/emulator.c ${PWD}/tool/memory.c ${PWD}/tool/cpu.c ${PWD}/tool/arguments.c ${PWD}/tool/devices.c
 	@echo -e '\033[0;32m[*]\033[0mbuild the yakvm tool'
 
 driver:
 	bear --append --output ${PWD}/compile_commands.json -- \
 		make \
-			EXTRA_CFLAGS="-DYAKVM_MEMORY=${YAKVM_MEMORY} -DYAKVM_PIO_HAWK=${YAKVM_PIO_HAWK}" \
+			EXTRA_CFLAGS="-DYAKVM_MEMORY=${YAKVM_MEMORY} -DYAKVM_PIO_HAWK=${YAKVM_PIO_HAWK} -DYAKVM_MMIO_HAWK=${YAKVM_MMIO_HAWK}" \
 			-C ${PWD}/driver \
 			KDIR=${PWD}/kernel \
 			-j ${NPROC}
@@ -140,6 +143,7 @@ test:
 			--stack=${YAKVM_STACK} \
 			--memory=${YAKVM_MEMORY} \
 			--pio=${YAKVM_PIO_HAWK} \
+			--mmio=${YAKVM_MMIO_HAWK} \
 			--bin=${PWD}/shares/guest.bin && \
 		objdump -d -mi8086 -Maddr16,data16 ${PWD}/shares/guest.elf; \
 	else \

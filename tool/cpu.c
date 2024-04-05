@@ -68,6 +68,71 @@ void yakvm_destroy_cpu(struct vm *vm)
     assert(!close(vm->cpu.fd));
 }
 
+/*
+ * Emulating the mmio instruction. For simplicity, we only
+ * support the *movb (edx), al* and *movb al, (edx)*
+ * instructions, where %edx holds the mmio address and
+ * %al holds the value.
+ */
+static void yakvm_vcpu_handle_mmio(struct vm *vm)
+{
+        uint32_t ip = vm->cpu.state->cs + vm->cpu.state->rip;
+        struct registers regs;
+
+        /*
+         * The address-size override prefix can override the
+         * default 16-bit addresses to effective 32-bit addresses
+         * according to "1.2.3" on page 9 at
+         * https://www.amd.com/content/dam/amd/en/documents/processor-tech-docs/programmer-references/24594.pdf
+         */
+        assert(vm->memory[ip] == 0x67);
+
+        /*
+         * Opcode 0x88 represents *mov mem8, reg8*, which is mmio out
+         * instruction, and Opcode 0x8a represents *mov reg8, mem8*,
+         * which is mmio in instruction, according to "MOV" on page 234 at
+         * https://www.amd.com/content/dam/amd/en/documents/processor-tech-docs/programmer-references/24594.pdf
+         *
+         * Operands should be in ModRM byte format, meaning
+         * %edx contains the mmio address an %al holds the
+         * vlaue described in "1.4.3" on page 21 at
+         * https://www.amd.com/content/dam/amd/en/documents/processor-tech-docs/programmer-references/24594.pdf
+         */
+        assert(ioctl(vm->cpu.fd, YAKVM_GET_REGS, &regs) == 0);
+        switch (vm->memory[ip + 1]) {
+                case 0x88:
+                        assert(vm->memory[ip + 2] == 0x02);
+                        assert(regs.rdx == YAKVM_MMIO_HAWK);
+                        yakvm_device_mmio_set(regs.rax);
+                        break;
+
+                case 0x8a:
+                        assert(vm->memory[ip + 2] == 0x02);
+                        assert(regs.rdx == YAKVM_MMIO_HAWK);
+                        regs.rax = yakvm_device_mmio_get();
+                        break;
+
+                default:
+                        /* code should not reach here */
+                        assert(false);
+                        break;
+        }
+
+        /* update the rip to the next instruction address */
+        regs.rip += 3;
+        assert(ioctl(vm->cpu.fd, YAKVM_SET_REGS, &regs) == 0);
+}
+
+static void yakvm_cpu_handle_npf(struct vm *vm)
+{
+        if (vm->cpu.state->exit_info_2 == YAKVM_MMIO_HAWK) {
+                yakvm_vcpu_handle_mmio(vm);
+        } else {
+                assert(ioctl(vm->vmfd, YAKVM_MMAP_PAGE,
+                             yakvm_page(vm->cpu.state->exit_info_2)) == 0);
+        }
+}
+
 static void yakvm_cpu_handle_ioio(struct vm *vm)
 {
         struct registers regs;
@@ -82,9 +147,9 @@ static void yakvm_cpu_handle_ioio(struct vm *vm)
          */
         assert(ioctl(vm->cpu.fd, YAKVM_GET_REGS, &regs) == 0);
         if (svm_ioio_type(info) == SVM_IOIO_TYPE_IN) {
-                regs.rax = yakvm_device_io_get();
+                regs.rax = yakvm_device_pio_get();
         } else {
-                yakvm_device_io_set(regs.rax);
+                yakvm_device_pio_set(regs.rax);
         }
 
         /*
@@ -101,8 +166,7 @@ static int yakvm_cpu_handle_exit(struct vm *vm)
 {
         switch (vm->cpu.state->exit_code) {
                 case SVM_EXIT_NPF:
-                        assert(ioctl(vm->vmfd, YAKVM_MMAP_PAGE,
-                                        yakvm_page(vm->cpu.state->exit_info_2)) == 0);
+                        yakvm_cpu_handle_npf(vm);
                         break;
 
                 case SVM_EXIT_EXCP_BASE + DB_VECTOR:
